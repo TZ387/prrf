@@ -6,18 +6,18 @@ module RFSimulation
 include("Core/Config.jl")
 include("Core/GridSetup.jl") 
 include("Core/RFSolver.jl")
-include("Core/BioheatSolver.jl")
+# include("Core/BioheatSolver.jl")
 include("Core/PlottingAndVisualization.jl")
-include("Core/TimelapseCreation.jl")
+# include("Core/TimelapseCreation.jl")
 include("Core/RunSimulation.jl")
 
 # Re-export the submodules so they can be accessed directly
 using .Config
 using .GridSetup
 using .RFSolver
-using .BioheatSolver
+# using .BioheatSolver
 using .PlottingAndVisualization
-using .TimelapseCreation
+# using .TimelapseCreation
 using .RunSimulation
 
 # Optionally, you can also re-export specific functions/types for convenience

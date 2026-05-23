@@ -2,9 +2,9 @@ module RunSimulation
 
 using ..GridSetup
 using ..RFSolver
-using ..BioheatSolver
+# using ..BioheatSolver
 using ..PlottingAndVisualization
-using ..TimelapseCreation
+# using ..TimelapseCreation
 
 export run_simulation
 
