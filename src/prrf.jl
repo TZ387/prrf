@@ -1,10 +1,10 @@
 module prrf
 
-include("Config.jl")
-include("GridSetup.jl")
-include("RFSolver.jl")
-include("PlottingAndVisualization.jl")
-include("RunSimulation.jl")
+include(joinpath(@__DIR__, "Config.jl"))
+include(joinpath(@__DIR__, "GridSetup.jl"))
+include(joinpath(@__DIR__, "RFSolver.jl"))
+include(joinpath(@__DIR__, "PlottingAndVisualization.jl"))
+include(joinpath(@__DIR__, "RunSimulation.jl"))
 
 using .Config
 using .GridSetup
