@@ -1,9 +1,6 @@
 # Include the main module - this loads all submodules
 using prrf
 
-# Import what you need from the main module
-using GLMakie
-
 # Geometry definition function
 function geometryDefinition(grid_params::GridParams)
     # Get coordinate grids from Config module (implementation details hidden)
