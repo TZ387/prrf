@@ -1,5 +1,5 @@
 # Include the main module - this loads all submodules
-include("../RFSimulation.jl")
+using prrf
 
 # Import what you need from the main module
 using .RFSimulation

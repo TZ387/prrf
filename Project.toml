@@ -4,3 +4,9 @@ version = "0.1.0"
 authors = ["Tilen Žel <tilen.zel@gmail.com>"]
 
 [deps]
+Ferrite = "c061ca5d-56c9-439f-9c0e-210fe06d3992"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+
+[compat]
+Ferrite = "1.4.0"
+GLMakie = "0.13.10"
