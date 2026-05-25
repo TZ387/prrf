@@ -53,17 +53,12 @@ function setup_material_properties(material_indices, materials, nx, ny, nz)
     VHC = zeros(Float64, nx, ny, nz)
     k = zeros(Float64, nx, ny, nz)
     
-    for x in 1:nx
-        for y in 1:ny
-            for z in 1:nz
-                mat_id = material_indices[x, y, z]
-                material = materials[mat_id]
-                sigma[x, y, z] = material[:sigma]
-                epsilon_im[x, y, z] = material[:epsilon_im]
-                VHC[x, y, z] = material[:VHC]
-                k[x, y, z] = material[:k]
-            end
-        end
+    for (mat_id, material) in materials
+        mask = material_indices .== mat_id
+        sigma[mask]      .= material[:sigma]
+        epsilon_im[mask] .= material[:epsilon_im]
+        VHC[mask]        .= material[:VHC]
+        k[mask]          .= material[:k]
     end
     
     return sigma, epsilon_im, VHC, k
