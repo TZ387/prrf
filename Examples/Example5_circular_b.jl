@@ -2,7 +2,6 @@
 using prrf
 
 # Import what you need from the main module
-using .RFSimulation
 using GLMakie
 
 # Geometry definition function
