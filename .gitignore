@@ -1,5 +1,5 @@
 /Images
-/Core/BioheatSolver.jl
-/Core/TimelapseCreation.jl
+/src/BioheatSolver.jl
+/src/TimelapseCreation.jl
 
 prompt.txt
