@@ -137,11 +137,10 @@ function plot_slices(V, grid_params; fig = nothing, num_ticks = 5, use_log_scale
     fig
 end
 
-function plot_graphs(material_indices, grid_params, Qel, E_new, V_new)
-
+function plot_graphs(material_indices, grid_params, Qel, E_new, V_new, example_name=nothing)
+    
     # Plot the voxel grid
     fig1 = plot_slices(material_indices, grid_params, num_ticks = maximum(material_indices), title = "Media Distribution")
-    # Plot V and Qel
     fig2 = plot_slices(Qel, grid_params, title = "Distribution of Qel [W/m^3]")
     fig3 = plot_slices(E_new, grid_params, title = "Distribution of E [V/m]")
     fig4 = plot_slices(V_new, Config.GridParams(
@@ -154,16 +153,20 @@ function plot_graphs(material_indices, grid_params, Qel, E_new, V_new)
         title = "Distribution of V [V]"
     )
 
-    window = display(GLMakie.Screen(), fig1)
+    window1 = display(GLMakie.Screen(), fig1)
     window2 = display(GLMakie.Screen(), fig2)
     window3 = display(GLMakie.Screen(), fig3)
     window4 = display(GLMakie.Screen(), fig4)
 
-    #save("pet_plasti_krozna_elektroda_03_022_0025_a.png", fig1)  # Save the plot as an image
-    #save("pet_plasti_krozna_elektroda_03_022_0025_b.png", fig2)  # Save the plot as an image
-    #save("pet_plasti_krozna_elektroda_03_022_0025_c.png", fig3)  # Save the plot as an image
-    #save("pet_plasti_krozna_elektroda_03_022_0025_d.png", fig4)  # Save the plot as an image
-
+    # Save figures to Images folder
+    if example_name !== nothing
+        images_dir = joinpath(@__DIR__, "..", "Images")
+        mkpath(images_dir)
+        save(joinpath(images_dir, "$(example_name)_1.png"), fig1)
+        save(joinpath(images_dir, "$(example_name)_2.png"), fig2)
+        save(joinpath(images_dir, "$(example_name)_3.png"), fig3)
+        save(joinpath(images_dir, "$(example_name)_4.png"), fig4)
+    end
 
 end
 
