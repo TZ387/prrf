@@ -20,7 +20,17 @@ It should be noted that the electrical permittivity, denoted here as $\epsilon$,
 
 $$D=\epsilon E={\epsilon}_0 {\epsilon}_r E$$
 
-## 2. Literature
+## 2. Usage
+
+The usage of the project is simple: Just run one of the example files or create a new example file and then provide the necessary parameters.
+
+In case you want the plots saved in the Images subfolder, provide filename parameter to plot_graphs function, such as in example below:
+
+```julia
+plot_graphs(material_indices, grid_params, Qel, E_new, V_new, "Example6_Franco")
+```
+
+## 3. Literature
 
 [1] Quasi-Static Electromagnetic Dosimetry: From Basic Principles to Examples of Applications
 
