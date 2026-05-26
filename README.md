@@ -30,6 +30,14 @@ In case you want the plots saved in the Images subfolder, provide filename param
 plot_graphs(material_indices, grid_params, Qel, E_new, V_new, "Example6_Franco")
 ```
 
+### HDF5 Data Handling
+
+Simulation results can be stored (using save_simulation function) in .h5 files using HDF5.jl. This format is efficient, portable, and well-suited for large numerical datasets. The data structure is similar to what you would see in the MATLAB workspace, making it intuitive to explore.
+
+You can inspect these files using tools such as HDFView:
+
+- <https://www.hdfgroup.org/download-hdfview/>
+
 ## 3. Literature
 
 [1] Quasi-Static Electromagnetic Dosimetry: From Basic Principles to Examples of Applications
