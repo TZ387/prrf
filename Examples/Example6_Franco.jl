@@ -21,10 +21,10 @@ function define_material_properties()
     materials = Dict{Int, NamedTuple}()
     
     epsilon_0 = 8.854e-12  # Permittivity of free space [F/m]
-    materials[1] = (name = "Gel", sigma = 0.3, epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.025)
-    materials[2] = (name = "Skin", sigma = 0.22, epsilon_im = 0*epsilon_0, VHC = 4.18e6, k = 0.6)
-    materials[3] = (name = "Fat", sigma = 0.025, epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.5)
-    materials[4] = (name = "Muscle", sigma = 0.5, epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.5)
+    materials[1] = (name = "Gel",    sigma = 0.3,   epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.025)
+    materials[2] = (name = "Skin",   sigma = 0.22,  epsilon_im = 0*epsilon_0, VHC = 4.18e6, k = 0.6)
+    materials[3] = (name = "Fat",    sigma = 0.025, epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.5)
+    materials[4] = (name = "Muscle", sigma = 0.5,   epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.5)
     
     return materials
 end
@@ -38,10 +38,10 @@ function main()
     grid_params = GridParams(
         0.09,    # lx = Length of the simulation domain in x-direction [m]
         0.09,    # ly = Length of the simulation domain in y-direction [m]
-        0.1,    # lz = Length of the simulation domain in z-direction [m]
-        180,    # nx = Number of elements in the x-direction
-        180,    # ny = Number of elements in the y-direction
-        200     # nz = Number of elements in the z-direction
+        0.1,     # lz = Length of the simulation domain in z-direction [m]
+        180,     # nx = Number of elements in the x-direction
+        180,     # ny = Number of elements in the y-direction
+        200      # nz = Number of elements in the z-direction
     )
 
     # Load materials and geometry
@@ -53,16 +53,16 @@ function main()
 
     # Load RF parameters
     rf_params = RFParams(
-        sigma,   # Electrical conductivity matrix [S/m]
+        sigma,      # Electrical conductivity matrix [S/m]
         epsilon_im, # Permittivity matrix [F/m]
-        1e6,     # ω = (Circular) Frequency of the RF signal [Hz]
+        1e6,        # ω = (Circular) Frequency of the RF signal [Hz]
     )
 
     # Load bioheat parameters
     bioheat_params = BioheatParams(
         1.0,     # Δt = Time step size [s]
         100,     # num_steps = Number of time steps to simulate
-        VHC,       # Volumetric heat capacity matrix [J/(m³·K)]
+        VHC,     # Volumetric heat capacity matrix [J/(m³·K)]
         k,       # Thermal conductivity matrix [W/(m·K)]
         1050.0,  # rho_b = Blood density [kg/m³]
         3600.0,  # cb = Specific heat capacity of blood [J/(kg·K)]
@@ -72,35 +72,37 @@ function main()
     )
 
     boundary_conditions = Dict(
-        "top" => (x, t) -> 0.0,  # Gaussian in x and y
-        #"left" => (x, t) -> 0.0,  # Gaussian in x and y
-        #"right" => (x, t) -> 0.0,  # Gaussian in x and y
-        #"front" => (x, t) -> 0.0,  # Gaussian in x and y
-        #"back" => (x, t) -> 0.0,  # Gaussian in x and y
+        "top" => (x, t) -> 0.0,
         "bottom" => (x, t) -> begin
             L = 0.02  # Half of the length of the electrode in meters
             a = 1.28  # Correlation constant
             b = -2.25e-3  # Correlation constant
             l = 16  # Total number of coil turns
-            P = 2000.0  # Replace with the applied RF power in W
-            I = 1.0  # Replace with the impedance of tissues in ohms
+            P = 2000.0  # Applied RF power [W]
+            I = 1.0  # Impedance of tissues [Ω]
 
             if abs(x[2]) <= L && abs(x[1]) <= L
-                return (a * (l * x[2] / L)^2 + b) * sqrt(P * I)  
+                return (a * (l * x[2] / L)^2 + b) * sqrt(P * I)
             else
-                return 0.0  # Zero potential outside the circular region
+                return 0.0
             end
         end
     )
 
-    # Run the simulation using the RunSimulation module and plot graphs
-    grid, V, E, Qel, E_new, V_new = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions);
+    # Run the simulation
+    grid, V, E, Qel, E_new, V_new = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions)
 
-    # Save
-    save_simulation("Example6_Franco.h5", grid_params, material_indices, Qel, E_new, V_new)
+    # Save all relevant fields — V and E are now included alongside the rest
+    save_simulation("Example6_Franco.h5", grid_params, material_indices;
+        Qel   = Qel,
+        E_new = E_new,
+        V_new = V_new,
+        V     = V,
+        E     = E,
+    )
 
     plot_graphs(material_indices, grid_params, Qel, E_new, V_new, "Example6_Franco")
-    
+
     return nothing
 end
 
