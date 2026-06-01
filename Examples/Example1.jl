@@ -83,7 +83,8 @@ function main()
     grid, V, E, Qel, E_new, V_new = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions);
 
     # Save
-    save_simulation("Example1.h5", grid_params, material_indices, Qel, E_new, V_new)
+    save_simulation("Example1.h5", grid_params, material_indices;
+        Qel=Qel, E_new=E_new, V_new=V_new)
 
     plot_graphs(material_indices, grid_params, Qel, E_new, V_new)
 
