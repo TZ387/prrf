@@ -102,8 +102,8 @@ function main()
 
     fig5 = plot_slices(Qel_bio, grid_params, title = "Qel in Biological Tissue Only [W/m³]")
     window5 = display(GLMakie.Screen(), fig5)
-    return nothing
+    return grid, V, E, Qel, E_new, V_new
 end
 
-# Call the main function
-main()
+# Call the main function and return values for potential inspection
+grid, V, E, Qel, E_new, V_new = main();

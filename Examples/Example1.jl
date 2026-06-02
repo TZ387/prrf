@@ -88,8 +88,8 @@ function main()
 
     plot_graphs(material_indices, grid_params, Qel, E_new, V_new)
 
-    return nothing
+    return grid, V, E, Qel, E_new, V_new
 end
 
-# Call the main function
-main()
+# Call the main function and return values for potential inspection
+grid, V, E, Qel, E_new, V_new = main();
