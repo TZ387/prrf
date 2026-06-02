@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.14"
+# dependencies = [
+#     "numpy>=2.4.6",
+# ]
+# ///
 import numpy as np
 
 """
