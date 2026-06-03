@@ -171,7 +171,11 @@ function calculate_values(E, sigma, grid_params)
     velikost = length(E)
 
     for i in 1:velikost
-        value = mean([v[1]^2 + v[2]^2 + v[3]^2 for v in E[i]])
+        value = 0.0
+        for v in E[i]
+            value += v[1]^2 + v[2]^2 + v[3]^2
+        end
+        value /= length(E[i])
 
         cell_number = i - 1
 
