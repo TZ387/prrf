@@ -150,7 +150,7 @@ function calculate_fields(cellvalues::CellValues, dh::DofHandler, V::AbstractVec
     nqp = getnquadpoints(cellvalues)
 
     Q_el = similar(sigma)
-    E_new = similar(sigma)
+    E = similar(sigma)
 
     for (cell_num, cell) in enumerate(CellIterator(dh))
         celldofs!(cell_dofs, dh, cell_num)
@@ -167,10 +167,10 @@ function calculate_fields(cellvalues::CellValues, dh::DofHandler, V::AbstractVec
         value /= nqp
 
         Q_el[x, y, z] = (1/2) * sigma[x, y, z] * value
-        E_new[x, y, z] = sqrt(value)
+        E[x, y, z] = sqrt(value)
     end
 
-    return Q_el, E_new
+    return Q_el, E
 end
 
 

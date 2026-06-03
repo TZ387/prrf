@@ -27,7 +27,7 @@ The usage of the project is simple: Just run one of the example files or create 
 In case you want the plots saved in the Images subfolder, provide filename parameter to plot_graphs function, such as in example below:
 
 ```julia
-plot_graphs(material_indices, grid_params, Qel, E_new, V_new, "Example6_Franco")
+plot_graphs(material_indices, grid_params, Qel, E, V_new, "Example6_Franco")
 ```
 
 ### HDF5 Data Handling

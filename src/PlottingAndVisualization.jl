@@ -137,12 +137,12 @@ function plot_slices(V, grid_params; fig = nothing, num_ticks = 5, use_log_scale
     fig
 end
 
-function plot_graphs(material_indices, grid_params, Qel, E_new, V_new, example_name=nothing)
+function plot_graphs(material_indices, grid_params, Qel, E, V_new, example_name=nothing)
     
     # Plot the voxel grid
     fig1 = plot_slices(material_indices, grid_params, num_ticks = maximum(material_indices), title = "Media Distribution")
     fig2 = plot_slices(Qel, grid_params, title = "Distribution of Qel [W/m^3]")
-    fig3 = plot_slices(E_new, grid_params, title = "Distribution of E [V/m]")
+    fig3 = plot_slices(E, grid_params, title = "Distribution of E [V/m]")
     fig4 = plot_slices(V_new, Config.GridParams(
         grid_params.lx, 
         grid_params.ly, 
