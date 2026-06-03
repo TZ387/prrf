@@ -9,6 +9,14 @@ using ..GridSetup
 
 export solve_rf, calculate_E, calculate_values, convert_V
 
+function cell_index_to_xyz(cell_number, nx_max, ny_max)
+    cell_number -= 1
+    x = (cell_number % (nx_max * ny_max)) % nx_max + 1
+    y = div((cell_number % (nx_max * ny_max)), nx_max) + 1
+    z = div(cell_number, nx_max * ny_max) + 1
+    return x, y, z
+end
+
 # Function to solve the RF problem in 3D using the finite element method
 function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridParams, boundary_conditions)
 
@@ -48,17 +56,11 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
         
         # Extract the 3D coordinates of the current element
 
-        # Adjust for zero-based indexing
-        cell_number -= 1
-
         # Calculate (nx, ny, nz)
         nx_max = grid_params.nx
         ny_max = grid_params.ny
 
-        x = (cell_number % (nx_max * ny_max)) % nx_max + 1
-        y = div((cell_number % (nx_max * ny_max)), nx_max) + 1
-        z = div(cell_number, nx_max * ny_max) + 1
-
+        x, y, z = cell_index_to_xyz(cell_number, nx_max, ny_max)
         
         # Ensure x, y, z are valid indices
         if x > size(σ, 1) || y > size(σ, 2) || z > size(σ, 3)
@@ -177,15 +179,7 @@ function calculate_values(E, sigma, grid_params)
         end
         value /= length(E[i])
 
-        cell_number = i - 1
-
-        # Calculate (nx, ny, nz)
-        nx_max = grid_params.nx
-        ny_max = grid_params.ny
-
-        x = (cell_number % (nx_max * ny_max)) % nx_max + 1
-        y = div((cell_number % (nx_max * ny_max)), nx_max) + 1
-        z = div(cell_number, nx_max * ny_max) + 1
+        x, y, z = cell_index_to_xyz(i, grid_params.nx, grid_params.ny)
 
         Q_el[x, y, z] = (1/2) * sigma[x, y, z] * value
         E_new[x, y, z] = sqrt(value)
