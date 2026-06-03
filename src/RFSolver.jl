@@ -195,26 +195,11 @@ function calculate_values(E, sigma, grid_params)
 end
 
 
-function convert_V(V, sigma, grid_params)
-    # Create a 3D array V_new with the desired dimensions (101x101x211)
+function convert_V(V, grid_params)
     nx_max = grid_params.nx + 1
     ny_max = grid_params.ny + 1
     nz_max = grid_params.nz + 1
-    V_new = similar(sigma, nx_max, ny_max, nz_max)
-
-    velikost = length(V)
-    # Now map the 1D array V into the 3D array V_new
-    for i in 1:velikost
-        # Compute the corresponding 3D indices
-        z = div(i - 1, nx_max * ny_max) + 1
-        y = div((i - 1) % (nx_max * ny_max), nx_max) + 1
-        x = (i - 1) % nx_max + 1
-
-        # Assign the value from the 1D array to the correct position in the 3D array
-        V_new[x, y, z] = V[i]
-    end
-
-    return V_new
+    return reshape(V, nx_max, ny_max, nz_max)
 end
 
 end # module RFSolver_CPU

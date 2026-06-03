@@ -17,7 +17,7 @@ function run_simulation(grid_params, rf_params, bioheat_params, boundary_conditi
     # Calculate E and Qel
     E = calculate_E(cellValues, dh, V)
     Qel, E_new = calculate_values(E, rf_params.sigma, grid_params)
-    V_new = convert_V(V, rf_params.sigma, grid_params)
+    V_new = convert_V(V, grid_params)
 
     return grid, V, E, Qel, E_new, V_new
 end
