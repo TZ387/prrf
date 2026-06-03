@@ -5,6 +5,7 @@ using ..Config
 
 export save_simulation, load_simulation
 
+# Save grid parameters, material indices, and any additional fields to an HDF5 file
 function save_simulation(filepath::String,
                          grid_params::Config.GridParams,
                          material_indices;
@@ -24,6 +25,7 @@ function save_simulation(filepath::String,
     println("Simulation saved → $filepath")
 end
 
+# Load a previously saved simulation, returning grid_params, material_indices, and a NamedTuple of data fields
 function load_simulation(filepath::String)
     h5open(filepath, "r") do f
         grid_params      = _load_grid_params(f)
@@ -39,6 +41,7 @@ function load_simulation(filepath::String)
     end
 end
 
+# Store grid parameters as individual scalar datasets under a dedicated group
 function _save_grid_params(fid, gp::Config.GridParams)
     g = create_group(fid, "grid_params")
     for fname in (:lx, :ly, :lz, :nx, :ny, :nz)
@@ -46,6 +49,7 @@ function _save_grid_params(fid, gp::Config.GridParams)
     end
 end
 
+# Reconstruct GridParams from the saved scalar datasets
 function _load_grid_params(fid)
     g = fid["grid_params"]
     Config.GridParams(
@@ -54,8 +58,10 @@ function _load_grid_params(fid)
     )
 end
 
+# Dispatch on element type to pick the appropriate HDF5 storage strategy
 function _write_field(group, name::String, v)
     if v isa AbstractArray{<:Complex}
+        # Complex arrays are split into real and imag subgroups, marked with an attribute for loading
         sg = create_group(group, name)
         attrs(sg)["complex"] = 1
         chunk = _autochunk(size(v))
@@ -73,6 +79,7 @@ function _write_field(group, name::String, v)
     end
 end
 
+# Write a Float64 array with shuffle filter and moderate deflate compression
 function _write_compressed(group, name::String, data::Array{Float64}, chunk)
     ds = create_dataset(
         group, name, datatype(Float64), dataspace(data);
@@ -83,6 +90,7 @@ function _write_compressed(group, name::String, data::Array{Float64}, chunk)
     write_dataset(ds, datatype(Float64), data)
 end
 
+# Choose chunk size targeting ~32K elements, scaled to array dimensionality
 function _autochunk(sz::Tuple)
     TARGET = 32_768
     if length(sz) == 1
@@ -98,12 +106,14 @@ function _autochunk(sz::Tuple)
     end
 end
 
+# Recursively load a group, reconstructing complex arrays from real/imag subgroups
 function _load_group(group)
     pairs_vec = Pair{Symbol, Any}[]
     for key in keys(group)
         obj = group[key]
         sym = Symbol(key)
         if obj isa HDF5.Group
+            # Check for the complex marker attribute set during saving
             if haskey(attrs(obj), "complex") && read(attrs(obj)["complex"]) == 1
                 re  = read(obj["real"])
                 im_ = read(obj["imag"])
