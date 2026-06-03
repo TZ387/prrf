@@ -97,11 +97,11 @@ function main()
     
 
     # Run the simulation using the RunSimulation module and plot graphs
-    grid, V_dof, Qel, E, V_new = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions);
-    plot_graphs(material_indices, grid_params, Qel, E, V_new)
+    grid, V_dof, Qel, E, V = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions);
+    plot_graphs(material_indices, grid_params, Qel, E, V)
 
-    return grid, V_dof, Qel, E, V_new
+    return grid, V_dof, Qel, E, V
 end
 
 # Call the main function and return values for potential inspection
-grid, V_dof, Qel, E, V_new = main();
+grid, V_dof, Qel, E, V = main();
