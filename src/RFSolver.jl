@@ -7,7 +7,7 @@ using IterativeSolvers
 using ..Config
 using ..GridSetup
 
-export solve_rf, calculate_E, calculate_values, convert_V
+export solve_rf, calculate_fields, convert_V
 
 function cell_index_to_xyz(cell_number, nx_max, ny_max)
     cell_number -= 1
@@ -142,46 +142,29 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
     return V, dh, cellvalues
 end
 
-# Function to calculate the electrical field (E) from the potential
+# Function to calculate the electrical field (E) and power dissipation (Qel) from the potential
 
-function calculate_E(cellvalues::CellValues, dh::DofHandler, a::AbstractVector{T}) where T
-
+function calculate_fields(cellvalues::CellValues, dh::DofHandler, V::AbstractVector{T}, sigma, grid_params) where T
     n = getnbasefunctions(cellvalues)
     cell_dofs = zeros(Int, n)
     nqp = getnquadpoints(cellvalues)
 
-    # Allocate storage for the fluxes to store
-    q = [Vec{3,T}[] for _ in 1:getncells(dh.grid)]
-
-    for (cell_num, cell) in enumerate(CellIterator(dh))
-        q_cell = q[cell_num]
-        celldofs!(cell_dofs, dh, cell_num)
-        aᵉ = a[cell_dofs]
-        reinit!(cellvalues, cell)
-
-        for q_point in 1:nqp
-            q_qp = - function_gradient(cellvalues, q_point, aᵉ)
-            push!(q_cell, - q_qp)
-        end
-    end
-    return q
-end
-
-# Function to calculate the power dissipation (Qel) from the potential
-
-function calculate_values(E, sigma, grid_params)
     Q_el = similar(sigma)
     E_new = similar(sigma)
-    size = length(E)
 
-    for i in 1:size
-        value = 0.0
-        for v in E[i]
-            value += v[1]^2 + v[2]^2 + v[3]^2
+    for (cell_num, cell) in enumerate(CellIterator(dh))
+        celldofs!(cell_dofs, dh, cell_num)
+        aᵉ = V[cell_dofs]
+        reinit!(cellvalues, cell)
+
+        x, y, z = cell_index_to_xyz(cell_num, grid_params.nx, grid_params.ny)
+
+        value = zero(T)
+        for q_point in 1:nqp
+            g = function_gradient(cellvalues, q_point, aᵉ)
+            value += g[1]^2 + g[2]^2 + g[3]^2
         end
-        value /= length(E[i])
-
-        x, y, z = cell_index_to_xyz(i, grid_params.nx, grid_params.ny)
+        value /= nqp
 
         Q_el[x, y, z] = (1/2) * sigma[x, y, z] * value
         E_new[x, y, z] = sqrt(value)

@@ -16,7 +16,7 @@ using .SimulationIO
 
 export GridParams, RFParams, BioheatParams, setup_material_properties, create_coordinate_grids
 export setup_grid
-export solve_rf, calculate_E, calculate_values, convert_V
+export solve_rf, calculate_fields, convert_V
 export plot_slices, plot_graphs
 export run_simulation
 export save_simulation, load_simulation
