@@ -31,7 +31,7 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
     
     # Initialize the degree of freedom (DoF) handler
     dh = DofHandler(grid)
-    add!(dh, :V, basis)  # Add a scalar field 'V' to the DoF handler (for potential)
+    add!(dh, :V_dof, basis)  # Add a scalar field 'V_dof' to the DoF handler (for potential)
     close!(dh)
 
     # Create a sparse stiffness matrix 'K'
@@ -42,7 +42,7 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
 
     # Apply boundary conditions
     for (boundary_name, condition) in boundary_conditions
-        add!(ch, Dirichlet(:V, getfacetset(grid, boundary_name), condition))
+        add!(ch, Dirichlet(:V_dof, getfacetset(grid, boundary_name), condition))
     end
 
     close!(ch)
@@ -131,20 +131,20 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
     #     end
     # end
 
-    # Solve the linear system K * V = f for the potential 'V'
-    # V = K \ f;
-    V = cg(K, f)
-    # V = minres(K, f, reltol=1e-12)
-    # V = gmres(K, f)
+    # Solve the linear system K * V_dof = f for the potential 'V_dof'
+    # V_dof = K \ f;
+    V_dof = cg(K, f)
+    # V_dof = minres(K, f, reltol=1e-12)
+    # V_dof = gmres(K, f)
     # Explicitly make sure bcs are correct
-    apply!(V, ch)
+    apply!(V_dof, ch)
 
-    return V, dh, cellvalues
+    return V_dof, dh, cellvalues
 end
 
 # Function to calculate the electrical field (E) and power dissipation (Qel) from the potential
 
-function calculate_fields(cellvalues::CellValues, dh::DofHandler, V::AbstractVector{T}, sigma, grid_params) where T
+function calculate_fields(cellvalues::CellValues, dh::DofHandler, V_dof::AbstractVector{T}, sigma, grid_params) where T
     n = getnbasefunctions(cellvalues)
     cell_dofs = zeros(Int, n)
     nqp = getnquadpoints(cellvalues)
@@ -154,7 +154,7 @@ function calculate_fields(cellvalues::CellValues, dh::DofHandler, V::AbstractVec
 
     for (cell_num, cell) in enumerate(CellIterator(dh))
         celldofs!(cell_dofs, dh, cell_num)
-        aᵉ = V[cell_dofs]
+        aᵉ = V_dof[cell_dofs]
         reinit!(cellvalues, cell)
 
         x, y, z = cell_index_to_xyz(cell_num, grid_params.nx, grid_params.ny)
@@ -174,11 +174,11 @@ function calculate_fields(cellvalues::CellValues, dh::DofHandler, V::AbstractVec
 end
 
 
-function convert_V(V, grid_params)
+function convert_V(V_dof, grid_params)
     nx_max = grid_params.nx + 1
     ny_max = grid_params.ny + 1
     nz_max = grid_params.nz + 1
-    return reshape(V, nx_max, ny_max, nz_max)
+    return reshape(V_dof, nx_max, ny_max, nz_max)
 end
 
 end # module RFSolver_CPU

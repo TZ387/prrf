@@ -73,7 +73,7 @@ function main()
     )
 
     # Define boundary conditions as Gaussian functions
-    A = 10.0   # Amplitude of the Gaussian (e.g., 10 V)
+    A = 10.0   # Amplitude of the Gaussian (e.g., 10 V_dof)
     mu = 0.005  # Mean (center of the domain in x-direction)
     sigma2 = 0.03  # Standard deviation (controls the width of the Gaussian)
 
@@ -88,11 +88,11 @@ function main()
 
 
     # Run the simulation using the RunSimulation module and plot graphs
-    grid, V, Qel, E, V_new = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions);
+    grid, V_dof, Qel, E, V_new = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions);
     plot_graphs(material_indices, grid_params, Qel, E, V_new)
 
-    return grid, V, Qel, E, V_new
+    return grid, V_dof, Qel, E, V_new
 end
 
 # Call the main function and return values for potential inspection
-grid, V, Qel, E, V_new = main();
+grid, V_dof, Qel, E, V_new = main();

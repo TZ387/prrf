@@ -80,7 +80,7 @@ function main()
 
 
     # Run the simulation using the RunSimulation module and plot graphs
-    grid, V, Qel, E, V_new = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions);
+    grid, V_dof, Qel, E, V_new = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions);
 
     # Save
     save_simulation("Example1.h5", grid_params, material_indices;
@@ -88,8 +88,8 @@ function main()
 
     plot_graphs(material_indices, grid_params, Qel, E, V_new)
 
-    return grid, V, Qel, E, V_new
+    return grid, V_dof, Qel, E, V_new
 end
 
 # Call the main function and return values for potential inspection
-grid, V, Qel, E, V_new = main();
+grid, V_dof, Qel, E, V_new = main();
