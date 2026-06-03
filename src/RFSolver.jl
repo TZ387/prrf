@@ -168,9 +168,9 @@ end
 function calculate_values(E, sigma, grid_params)
     Q_el = similar(sigma)
     E_new = similar(sigma)
-    velikost = length(E)
+    size = length(E)
 
-    for i in 1:velikost
+    for i in 1:size
         value = 0.0
         for v in E[i]
             value += v[1]^2 + v[2]^2 + v[3]^2
