@@ -66,6 +66,8 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
         if x > size(σ, 1) || y > size(σ, 2) || z > size(σ, 3)
             throw(ArgumentError("Cell coordinates out of bounds for conductivity or permittivity matrix"))
         end
+
+        conductivity = σ[x, y, z] + frequency * ε_im[x, y, z]
         
         # Loop over all quadrature points for numerical integration
         for q_point in 1:getnquadpoints(cellvalues)
@@ -81,7 +83,7 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
                     ∇V = shape_gradient(cellvalues, q_point, j)
                     # Use correct 3D indexing to access σ and ε
                     # σ[x, y, z] + frequency * ε_im[x, y, z]
-                    Ke[i, j] += (σ[x, y, z] + frequency * ε_im[x, y, z]) * (∇δV ⋅ ∇V) * dΩ
+                    Ke[i, j] += conductivity * (∇δV ⋅ ∇V) * dΩ
                 end
             end
         end
