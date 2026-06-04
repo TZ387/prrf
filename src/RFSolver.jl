@@ -4,6 +4,7 @@ using Ferrite, SparseArrays
 using LinearAlgebra
 using Statistics
 using IterativeSolvers
+using LinearMaps
 using ..Config
 using ..GridSetup
 
@@ -17,160 +18,179 @@ function cell_index_to_xyz(cell_number, nx_max, ny_max)
     return x, y, z
 end
 
-# Function to solve the RF problem in 3D using the finite element method
+# Jacobi (diagonal) preconditioner — stores 1/d[i] directly.
+struct JacobiPrecond
+    d_inv::Vector{Float64}
+end
+LinearAlgebra.ldiv!(y::AbstractVector, P::JacobiPrecond, x::AbstractVector) = (y .= x .* P.d_inv)
+LinearAlgebra.ldiv!(P::JacobiPrecond, x::AbstractVector) = (x .*= P.d_inv)
+Base.:\(P::JacobiPrecond, x::AbstractVector) = x .* P.d_inv
+
+# Solve the RF Laplace problem
+#   div[(sigma + omega*epsilon_im) * grad(V)] = 0
+# using matrix-free preconditioned CG.
+#
+# K is NEVER assembled or stored — memory is O(n).
+#
+# Speed: on a uniform structured hex grid (from generate_grid) every element
+# has identical geometry, so  Ke(cell) = conductivity(cell) * Ke_ref.
+# Ke_ref is computed once from the first element (512 bytes).
+# Each matvec is then: for each cell, y_local += c * Ke_ref * v_local —
+# an 8x8 dense matvec scaled by a scalar, with no quadrature at runtime.
+# This is 8x fewer FLOPs per iteration than recomputing quadrature each time,
+# and lower memory bandwidth than a sparse matvec on an explicit K.
 function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridParams, boundary_conditions)
 
-    σ = rf_params.sigma      # Electrical conductivity matrix [S/m]
-    ε_im = rf_params.epsilon_im    # Permittivity matrix [F/m]
-    frequency = rf_params.ω          # Frequency of the RF signal [Hz]
-    
-    # Define the basis and quadrature for the FEM. 
-    basis = Lagrange{Ferrite.RefHexahedron, 1}()
-    quad = QuadratureRule{Ferrite.RefHexahedron}(2)
-    cellvalues = CellValues(quad, basis);
-    
-    # Initialize the degree of freedom (DoF) handler
+    sigma     = rf_params.sigma
+    eps_im    = rf_params.epsilon_im
+    frequency = rf_params.ω
+
+    basis      = Lagrange{Ferrite.RefHexahedron, 1}()
+    quad       = QuadratureRule{Ferrite.RefHexahedron}(2)
+    cellvalues = CellValues(quad, basis)
+
     dh = DofHandler(grid)
-    add!(dh, :V_dof, basis)  # Add a scalar field 'V_dof' to the DoF handler (for potential)
+    add!(dh, :V_dof, basis)
     close!(dh)
 
-    # Create a sparse stiffness matrix 'K'
-    K = allocate_matrix(dh)
-    
-    # Set up the constraint handler for Dirichlet boundary conditions
     ch = ConstraintHandler(dh)
-
-    # Apply boundary conditions
     for (boundary_name, condition) in boundary_conditions
         add!(ch, Dirichlet(:V_dof, getfacetset(grid, boundary_name), condition))
     end
-
     close!(ch)
 
-    # Function to assemble the element stiffness matrix and force vector
-    # This function computes contributions from the local element to the global matrix
-    function assemble_element!(Ke, fe, cellvalues, σ, ε, frequency, cell_number, grid_params)
-        n_basefuncs = getnbasefunctions(cellvalues)  # Number of basis functions per element
-        fill!(Ke, 0)  # Zero out the element stiffness matrix
-        fill!(fe, 0)  # Zero out the element force vector
-        
-        # Extract the 3D coordinates of the current element
+    n_dofs      = ndofs(dh)
+    n_basefuncs = getnbasefunctions(cellvalues)
+    nqp         = getnquadpoints(cellvalues)
+    nx_max      = grid_params.nx
+    ny_max      = grid_params.ny
+    n_cells     = nx_max * ny_max * grid_params.nz
 
-        # Calculate (nx, ny, nz)
-        nx_max = grid_params.nx
-        ny_max = grid_params.ny
-
-        x, y, z = cell_index_to_xyz(cell_number, nx_max, ny_max)
-        
-        # Ensure x, y, z are valid indices
-        if x > size(σ, 1) || y > size(σ, 2) || z > size(σ, 3)
-            throw(ArgumentError("Cell coordinates out of bounds for conductivity or permittivity matrix"))
-        end
-
-        conductivity = σ[x, y, z] + frequency * ε_im[x, y, z]
-        
-        # Loop over all quadrature points for numerical integration
-        for q_point in 1:getnquadpoints(cellvalues)
-            dΩ = getdetJdV(cellvalues, q_point)  # Jacobian determinant for volume element
+    # ── Precompute Ke_ref ────────────────────────────────────────────────────
+    # All elements share the same geometry (uniform hex mesh), so the
+    # geometric part of the stiffness matrix is identical across elements.
+    # We compute it once from the first element with unit conductivity.
+    Ke_ref = zeros(n_basefuncs, n_basefuncs)
+    let fc = first(CellIterator(dh))
+        reinit!(cellvalues, fc)
+        for qp in 1:nqp
+            dV = getdetJdV(cellvalues, qp)
             for i in 1:n_basefuncs
-                δV  = shape_value(cellvalues, q_point, i)    # Basis function value at q-point
-                ∇δV = shape_gradient(cellvalues, q_point, i) # Gradient of the basis function
-                # Add contribution to fe
-                fe[i] += 0 # δV * dΩ  # Element force vector contribution
-                
-                # Loop over the basis functions to compute the stiffness matrix contributions
+                gi = shape_gradient(cellvalues, qp, i)
                 for j in 1:n_basefuncs
-                    ∇V = shape_gradient(cellvalues, q_point, j)
-                    # Use correct 3D indexing to access σ and ε
-                    # σ[x, y, z] + frequency * ε_im[x, y, z]
-                    Ke[i, j] += conductivity * (∇δV ⋅ ∇V) * dΩ
+                    gj = shape_gradient(cellvalues, qp, j)
+                    Ke_ref[i, j] += (gi ⋅ gj) * dV
                 end
             end
         end
-        return Ke, fe
     end
-    
-    # Function to assemble the global stiffness matrix and force vector
-    # This assembles contributions from all elements in the grid
-    function assemble_global(cellvalues, K, dh, σ, ε_im, frequency, grid_params)
-        # Allocate the element stiffness matrix and element force vector
-        n_basefuncs = getnbasefunctions(cellvalues)
-        Ke = zeros(n_basefuncs, n_basefuncs)  # Element stiffness matrix
-        fe = zeros(n_basefuncs)               # Element force vector
-        
-        # Allocate global force vector 'f'
-        f = zeros(ndofs(dh))  # Global force vector
-        # Create an assembler to handle assembly into global matrix/vector
-        assembler = start_assemble(K, f)
-        
-        
-        cell_number = 0
-        # Loop over all cells (elements) in the grid
-        for cell in CellIterator(dh)
-            cell_number += 1
-            # Reinitialize cell values for this cell
-            reinit!(cellvalues, cell)
-            # Compute element contributions (Ke and fe)
-            assemble_element!(Ke, fe, cellvalues, σ, ε_im, frequency, cell_number, grid_params)
-            # Assemble the element contributions into the global matrix and vector
-            assemble!(assembler, celldofs(cell), Ke, fe)
+
+    # ── Cache conductivities and DOF indices per cell ────────────────────────
+    # One Float64 + 8 Int per cell — negligible memory.
+    conductivities = Vector{Float64}(undef, n_cells)
+    cell_dofs_all  = Matrix{Int}(undef, n_basefuncs, n_cells)
+    buf            = zeros(Int, n_basefuncs)
+
+    for (cn, cell) in enumerate(CellIterator(dh))
+        celldofs!(buf, dh, cn)
+        cell_dofs_all[:, cn] .= buf
+        ix, iy, iz = cell_index_to_xyz(cn, nx_max, ny_max)
+        conductivities[cn] = sigma[ix, iy, iz] + frequency * eps_im[ix, iy, iz]
+    end
+
+    # ── Build RHS f and Jacobi diagonal d ───────────────────────────────────
+    f  = zeros(n_dofs)
+    d  = zeros(n_dofs)
+    Kd = diag(Ke_ref)
+
+    for cn in 1:n_cells
+        c    = conductivities[cn]
+        dofs = @view cell_dofs_all[:, cn]
+        for i in 1:n_basefuncs
+            d[dofs[i]] += c * Kd[i]
         end
-        return K, f
     end
 
-    # Assemble the global matrix and solve the system
-    K, f = assemble_global(cellvalues, K, dh, σ, ε_im, frequency, grid_params)
+    apply!(f, ch)
+    for dof in ch.prescribed_dofs
+        d[dof] = 1.0
+    end
 
-    # Apply the Dirichlet boundary conditions
-    apply!(K, f, ch)
+    # ── Matrix-free matvec y = K_eff * v ────────────────────────────────────
+    lv = zeros(n_basefuncs)
+    lr = zeros(n_basefuncs)
 
-    # Solve the linear system K * V_dof = f for the potential 'V_dof'
-    # V_dof = K \ f;
-    V_dof = cg(K, f)
-    # Explicitly make sure bcs are correct
+    function matvec!(y, v)
+        fill!(y, 0.0)
+        @inbounds for cn in 1:n_cells
+            dofs = @view cell_dofs_all[:, cn]
+            c    = conductivities[cn]
+            for i in 1:n_basefuncs
+                lv[i] = v[dofs[i]]
+            end
+            mul!(lr, Ke_ref, lv)
+            for i in 1:n_basefuncs
+                y[dofs[i]] += c * lr[i]
+            end
+        end
+        # Identity rows for Dirichlet DOFs
+        for dof in ch.prescribed_dofs
+            y[dof] = v[dof]
+        end
+        return y
+    end
+
+    K_mf = LinearMap(matvec!, n_dofs; ismutating=true, issymmetric=true, isposdef=true)
+
+    # ── Jacobi-preconditioned CG ─────────────────────────────────────────────
+    P = JacobiPrecond(1.0 ./ d)
+
+    V_dof = zeros(n_dofs)
+    apply!(V_dof, ch)  # warm-start from Dirichlet values
+
+    V_dof, history = cg!(V_dof, K_mf, f; Pl=P, reltol=1e-8, maxiter=3000,
+                          initially_zero=false, log=true)
+
+    if !history.isconverged
+        @warn "CG did not converge after $(history.iters) iterations " *
+              "(residual=$(history[:resnorm][end]))"
+    else
+        @info "CG converged in $(history.iters) iterations"
+    end
+
     apply!(V_dof, ch)
-
     return V_dof, dh, cellvalues
 end
 
-# Function to calculate the electrical field (E) and power dissipation (Qel) from the potential
-
+# Calculate electric field magnitude E [V/m] and ohmic power density Q_el [W/m^3]
 function calculate_fields(cellvalues::CellValues, dh::DofHandler, V_dof::AbstractVector{T}, sigma, grid_params) where T
-    n = getnbasefunctions(cellvalues)
+    n         = getnbasefunctions(cellvalues)
     cell_dofs = zeros(Int, n)
-    nqp = getnquadpoints(cellvalues)
-
-    Q_el = similar(sigma)
-    E = similar(sigma)
+    nqp       = getnquadpoints(cellvalues)
+    Q_el      = similar(sigma)
+    E         = similar(sigma)
 
     for (cell_num, cell) in enumerate(CellIterator(dh))
         celldofs!(cell_dofs, dh, cell_num)
-        aᵉ = V_dof[cell_dofs]
+        ae = V_dof[cell_dofs]
         reinit!(cellvalues, cell)
-
         x, y, z = cell_index_to_xyz(cell_num, grid_params.nx, grid_params.ny)
 
         value = zero(T)
-        for q_point in 1:nqp
-            g = function_gradient(cellvalues, q_point, aᵉ)
+        for qp in 1:nqp
+            g = function_gradient(cellvalues, qp, ae)
             value += g[1]^2 + g[2]^2 + g[3]^2
         end
         value /= nqp
 
-        Q_el[x, y, z] = (1/2) * sigma[x, y, z] * value
-        E[x, y, z] = sqrt(value)
+        Q_el[x, y, z] = 0.5 * sigma[x, y, z] * value
+        E[x, y, z]    = sqrt(value)
     end
-
     return Q_el, E
 end
 
-
 function convert_V(V_dof, grid_params)
-    nx_max = grid_params.nx + 1
-    ny_max = grid_params.ny + 1
-    nz_max = grid_params.nz + 1
-    return reshape(V_dof, nx_max, ny_max, nz_max)
+    return reshape(V_dof, grid_params.nx + 1, grid_params.ny + 1, grid_params.nz + 1)
 end
 
-end # module RFSolver_CPU
-
+end # module RFSolver

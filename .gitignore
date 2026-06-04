@@ -6,3 +6,4 @@
 
 *.h5
 prompt.txt
+benchmark_solvers.jl
