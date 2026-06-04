@@ -137,7 +137,7 @@ function plot_slices(V, grid_params; fig = nothing, num_ticks = 5, use_log_scale
     fig
 end
 
-function plot_graphs(material_indices, grid_params, Qel, E, V, example_name=nothing)
+function plot_graphs(material_indices, grid_params, Qel, E, V, filename=nothing)
     
     # Plot the voxel grid
     fig1 = plot_slices(material_indices, grid_params, num_ticks = maximum(material_indices), title = "Media Distribution")
@@ -158,14 +158,12 @@ function plot_graphs(material_indices, grid_params, Qel, E, V, example_name=noth
     window3 = display(GLMakie.Screen(), fig3)
     window4 = display(GLMakie.Screen(), fig4)
 
-    # Save figures to Images folder
-    if example_name !== nothing
-        images_dir = joinpath(@__DIR__, "..", "Images")
-        mkpath(images_dir)
-        save(joinpath(images_dir, "$(example_name)_1.png"), fig1)
-        save(joinpath(images_dir, "$(example_name)_2.png"), fig2)
-        save(joinpath(images_dir, "$(example_name)_3.png"), fig3)
-        save(joinpath(images_dir, "$(example_name)_4.png"), fig4)
+    # Save figures if filename is provided
+    if filename !== nothing
+        save("$(filename)_a.png", fig1)
+        save("$(filename)_b.png", fig2)
+        save("$(filename)_c.png", fig3)
+        save("$(filename)_d.png", fig4)
     end
 
 end
