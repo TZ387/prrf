@@ -123,19 +123,10 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
 
     # Apply the Dirichlet boundary conditions
     apply!(K, f, ch)
-    
-    # Save the vector f to a file
-    # open("output_f.txt", "w") do file
-    #     for value in f
-    #         write(file, "$value\n")
-    #     end
-    # end
 
     # Solve the linear system K * V_dof = f for the potential 'V_dof'
     # V_dof = K \ f;
     V_dof = cg(K, f)
-    # V_dof = minres(K, f, reltol=1e-12)
-    # V_dof = gmres(K, f)
     # Explicitly make sure bcs are correct
     apply!(V_dof, ch)
 
