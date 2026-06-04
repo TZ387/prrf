@@ -5,6 +5,7 @@ using LinearAlgebra
 using Statistics
 using IterativeSolvers
 using LinearMaps
+using StaticArrays
 using ..Config
 using ..GridSetup
 
@@ -70,7 +71,9 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
     # All elements share the same geometry (uniform hex mesh), so the
     # geometric part of the stiffness matrix is identical across elements.
     # We compute it once from the first element with unit conductivity.
-    Ke_ref = zeros(n_basefuncs, n_basefuncs)
+    # Stored as SMatrix so the 8x8 mul! in the matvec is fully unrolled
+    # and SIMD-vectorized by the compiler — no BLAS overhead for tiny matrices.
+    Ke_ref_mut = zeros(n_basefuncs, n_basefuncs)
     let fc = first(CellIterator(dh))
         reinit!(cellvalues, fc)
         for qp in 1:nqp
@@ -79,11 +82,12 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
                 gi = shape_gradient(cellvalues, qp, i)
                 for j in 1:n_basefuncs
                     gj = shape_gradient(cellvalues, qp, j)
-                    Ke_ref[i, j] += (gi ⋅ gj) * dV
+                    Ke_ref_mut[i, j] += (gi ⋅ gj) * dV
                 end
             end
         end
     end
+    Ke_ref = SMatrix{8,8}(Ke_ref_mut)  # immutable static matrix
 
     # ── Cache conductivities and DOF indices per cell ────────────────────────
     # One Float64 + 8 Int per cell — negligible memory.
@@ -101,7 +105,7 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
     # ── Build RHS f and Jacobi diagonal d ───────────────────────────────────
     f  = zeros(n_dofs)
     d  = zeros(n_dofs)
-    Kd = diag(Ke_ref)
+    Kd = diag(Ke_ref)  # SVector{8} diagonal
 
     for cn in 1:n_cells
         c    = conductivities[cn]
@@ -117,18 +121,17 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
     end
 
     # ── Matrix-free matvec y = K_eff * v ────────────────────────────────────
-    lv = zeros(n_basefuncs)
-    lr = zeros(n_basefuncs)
+    # lv and lr are SVectors: constructed from a tuple gather, multiplied as
+    # SMatrix * SVector — fully stack-allocated, no heap pressure per call.
 
     function matvec!(y, v)
         fill!(y, 0.0)
         @inbounds for cn in 1:n_cells
             dofs = @view cell_dofs_all[:, cn]
             c    = conductivities[cn]
-            for i in 1:n_basefuncs
-                lv[i] = v[dofs[i]]
-            end
-            mul!(lr, Ke_ref, lv)
+            lv   = SVector{8}(v[dofs[1]], v[dofs[2]], v[dofs[3]], v[dofs[4]],
+                              v[dofs[5]], v[dofs[6]], v[dofs[7]], v[dofs[8]])
+            lr   = Ke_ref * lv
             for i in 1:n_basefuncs
                 y[dofs[i]] += c * lr[i]
             end
