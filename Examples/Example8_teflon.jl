@@ -1,5 +1,6 @@
 # Include the main module - this loads all submodules
 using prrf
+using GLMakie
 
 # Geometry definition function
 function geometryDefinition(grid_params::GridParams)
