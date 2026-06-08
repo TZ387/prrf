@@ -3,7 +3,6 @@ module GridSetup
 
 using Ferrite
 using Tensors
-using GeometryBasics
 using ..Config
 
 export setup_grid
