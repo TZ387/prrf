@@ -165,13 +165,18 @@ function solve_rf(grid, rf_params::Config.RFParams, grid_params::Config.GridPara
     return V_dof, dh, cellvalues
 end
 
-# Calculate electric field magnitude E [V/m] and ohmic power density Q_el [W/m^3]
+# Calculate electric field magnitude E [V/m], ohmic power density Q_el [W/m^3],
+# and electric field vector E_vec [V/m] with shape (3, nx, ny, nz).
+# E = -grad(V), so each component is the negated gradient of the voltage field.
+# E_vec[1/2/3, x, y, z] gives the x/y/z component; (3, nx, ny, nz) layout keeps
+# the three components of each cell contiguous in memory (column-major).
 function calculate_fields(cellvalues::CellValues, dh::DofHandler, V_dof::AbstractVector{T}, sigma, grid_params) where T
     n         = getnbasefunctions(cellvalues)
     cell_dofs = zeros(Int, n)
     nqp       = getnquadpoints(cellvalues)
     Q_el      = similar(sigma)
-    E         = similar(sigma)
+    E_mag     = similar(sigma)
+    E_vec     = zeros(T, 3, grid_params.nx, grid_params.ny, grid_params.nz)
 
     for (cell_num, cell) in enumerate(CellIterator(dh))
         celldofs!(cell_dofs, dh, cell_num)
@@ -179,17 +184,24 @@ function calculate_fields(cellvalues::CellValues, dh::DofHandler, V_dof::Abstrac
         reinit!(cellvalues, cell)
         x, y, z = cell_index_to_xyz(cell_num, grid_params.nx, grid_params.ny)
 
-        value = zero(T)
+        gx, gy, gz = zero(T), zero(T), zero(T)
         for qp in 1:nqp
-            g = function_gradient(cellvalues, qp, ae)
-            value += g[1]^2 + g[2]^2 + g[3]^2
+            g   = function_gradient(cellvalues, qp, ae)
+            gx += g[1]
+            gy += g[2]
+            gz += g[3]
         end
-        value /= nqp
+        gx /= nqp
+        gy /= nqp
+        gz /= nqp
 
-        Q_el[x, y, z] = 0.5 * sigma[x, y, z] * value
-        E[x, y, z]    = sqrt(value)
+        Q_el[x, y, z]    = 0.5 * sigma[x, y, z] * (gx^2 + gy^2 + gz^2)
+        E_mag[x, y, z]   = sqrt(gx^2 + gy^2 + gz^2)
+        E_vec[1, x, y, z] = -gx
+        E_vec[2, x, y, z] = -gy
+        E_vec[3, x, y, z] = -gz
     end
-    return Q_el, E
+    return Q_el, E_mag, E_vec
 end
 
 function convert_V(V_dof, grid_params)

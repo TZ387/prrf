@@ -90,20 +90,20 @@ function main()
     )
 
     # Run the simulation
-    grid, V_dof, Qel, E, V = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions)
+    grid, V_dof, Qel, E_mag, E_vec, V = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions)
 
     # Save all relevant fields — V_dof and E are now included alongside the rest
     save_simulation("Example6_Franco.h5", grid_params, material_indices;
         Qel   = Qel,
-        E = E,
+        E_mag = E_mag,
         V = V,
-        V_dof     = V_dof,
+        V_dof = V_dof,
     )
 
-    plot_graphs(material_indices, grid_params, Qel, E, V, "Images/Example6_Franco")
+    plot_graphs(material_indices, grid_params, Qel, E_mag, V, "Images/Example6_Franco")
 
-    return grid, V_dof, Qel, E, V
+    return grid, V_dof, Qel, E_mag, E_vec, V
 end
 
 # Call the main function and return values for potential inspection
-grid, V_dof, Qel, E, V = main();
+grid, V_dof, Qel, E_mag, E_vec, V = main();
