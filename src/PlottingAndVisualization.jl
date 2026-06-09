@@ -158,7 +158,7 @@ end
 
 # ── Top-level plotting entry point ────────────────────────────────────────────
 
-function plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V, filename=nothing)
+function plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V, filename=nothing, arrow_stride = 30)
     fig1 = plot_slices(material_indices, grid_params,
                        num_ticks = maximum(material_indices), title = "Media Distribution")
     fig2 = plot_slices(Qel, grid_params, title = "Distribution of Qel [W/m³]")
@@ -167,7 +167,7 @@ function plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V, filena
                            grid_params.lx, grid_params.ly, grid_params.lz,
                            grid_params.nx + 1, grid_params.ny + 1, grid_params.nz + 1),
                        title = "Distribution of V [V]")
-    fig5 = plot_field_directions(E_vec, grid_params, title = "E-field Direction")
+    fig5 = plot_field_directions(E_vec, grid_params; arrow_stride, title = "E-field Direction")
 
     display(GLMakie.Screen(), fig1)
     display(GLMakie.Screen(), fig2)
