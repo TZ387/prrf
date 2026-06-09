@@ -162,8 +162,8 @@ function plot_field_directions(E_vec, grid_params; arrow_density = 10, title = "
         ns[k] = m > 0 ? Vec3f(ex/m, ey/m, ez/m) : Vec3f(0f0, 0f0, 0f0)
     end
 
-    max_l = max(grid_params.lx, grid_params.ly, grid_params.lz)
-    arrow_scale = 0.8 * max_l / arrow_density
+    min_l = min(grid_params.lx, grid_params.ly, grid_params.lz)
+    arrow_scale = 0.9 * min_l / arrow_density
     arrows3d!(ax, ps, ns, color = :white, lengthscale = arrow_scale)
 
     fig
