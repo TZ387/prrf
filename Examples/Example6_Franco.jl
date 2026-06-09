@@ -97,13 +97,15 @@ function main()
         Qel   = Qel,
         E_mag = E_mag,
         V = V,
-        V_dof = V_dof,
+        V_dof     = V_dof,
     )
 
-    plot_graphs(material_indices, grid_params, Qel, E_mag, V, "Images/Example6_Franco")
+    plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V, "Images/Example6_Franco")
 
     return grid, V_dof, Qel, E_mag, E_vec, V
 end
 
-# Call the main function and return values for potential inspection
-grid, V_dof, Qel, E_mag, E_vec, V = main();
+# Call the main function and return values for potential inspection.
+# invokelatest ensures Julia uses the most recent world age for `main`,
+# avoiding the world-age warning introduced in Julia 1.12.
+grid, V_dof, Qel, E_mag, E_vec, V = Base.invokelatest(main);

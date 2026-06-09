@@ -96,7 +96,7 @@ function main()
 
     # Run the simulation using the RunSimulation module and plot graphs
     grid, V_dof, Qel, E_mag, E_vec, V = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions);
-    plot_graphs(material_indices, grid_params, Qel, E_mag, V)
+    plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V)
 
     bio_mask = material_indices .!= 1
     Qel_bio = Qel .* bio_mask

@@ -86,7 +86,7 @@ function main()
     save_simulation("Example1.h5", grid_params, material_indices;
         Qel=Qel, E_mag=E_mag, V=V)
 
-    plot_graphs(material_indices, grid_params, Qel, E_mag, V)
+    plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V)
 
     return grid, V_dof, Qel, E_mag, E_vec, V
 end
