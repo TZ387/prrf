@@ -116,26 +116,38 @@ end
 
 # Plots uniform-length arrows showing the direction of the electric field on a
 # subsampled 3D grid. Arrow length is constant — magnitude information is shown
-# separately in the E_mag slice plot. arrow_stride controls subsampling:
-# 1 arrow is drawn every arrow_stride cells along each axis.
-function plot_field_directions(E_vec, grid_params; arrow_stride = 30, title = "E-field Direction")
+# separately in the E_mag slice plot.
+#
+# arrow_density controls how many arrows appear along the longest physical axis.
+# Each axis gets its own stride derived from a shared target physical spacing,
+# so arrow density is visually uniform even on highly anisotropic grids.
+function plot_field_directions(E_vec, grid_params; arrow_density = 10, title = "E-field Direction")
     fig = Figure(size = (700, 700))
 
     if !isempty(title)
         Label(fig[0, 1], title, fontsize=18, tellwidth=false)
     end
 
-    ax = LScene(fig[1, 1], show_axis=true)
-    maximum_length = max(grid_params.lx, grid_params.ly, grid_params.lz)
-    scale!(ax.scene, maximum_length/grid_params.lx, maximum_length/grid_params.ly, maximum_length/grid_params.lz)
-
     x = LinRange(-grid_params.lx/2, grid_params.lx/2, grid_params.nx)
     y = LinRange(-grid_params.ly/2, grid_params.ly/2, grid_params.ny)
     z = LinRange(grid_params.lz, 0, grid_params.nz)
 
-    xi = 1:arrow_stride:length(x)
-    yi = 1:arrow_stride:length(y)
-    zi = 1:arrow_stride:length(z)
+    # aspect = (1,1,1) forces all three visual axes to the same length regardless
+    # of data range, so a flat domain like Example 1 still looks cubic.
+    # limits! sets the data extent so Axis3 knows what range to fit into that cube.
+    ax = Axis3(fig[1, 1], aspect = (1, 1, 1),
+               xlabel = "x [m]", ylabel = "y [m]", zlabel = "z [m]")
+    limits!(ax, minimum(x), maximum(x), minimum(y), maximum(y), minimum(z), maximum(z))
+
+    # With aspect=(1,1,1) all axes are visually equal, so we use the same
+    # number of arrow divisions along each axis regardless of physical size.
+    stride_x = max(1, round(Int, grid_params.nx / arrow_density))
+    stride_y = max(1, round(Int, grid_params.ny / arrow_density))
+    stride_z = max(1, round(Int, grid_params.nz / arrow_density))
+
+    xi = 1:stride_x:length(x)
+    yi = 1:stride_y:length(y)
+    zi = 1:stride_z:length(z)
 
     n = length(xi) * length(yi) * length(zi)
     ps = Vector{Point3f}(undef, n)
@@ -150,7 +162,8 @@ function plot_field_directions(E_vec, grid_params; arrow_stride = 30, title = "E
         ns[k] = m > 0 ? Vec3f(ex/m, ey/m, ez/m) : Vec3f(0f0, 0f0, 0f0)
     end
 
-    arrow_scale = 0.7 * arrow_stride * (grid_params.lx / length(x))
+    max_l = max(grid_params.lx, grid_params.ly, grid_params.lz)
+    arrow_scale = 0.8 * max_l / arrow_density
     arrows3d!(ax, ps, ns, color = :white, lengthscale = arrow_scale)
 
     fig
@@ -158,7 +171,7 @@ end
 
 # ── Top-level plotting entry point ────────────────────────────────────────────
 
-function plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V, filename=nothing, arrow_stride = 30)
+function plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V, filename=nothing, arrow_density = 10)
     fig1 = plot_slices(material_indices, grid_params,
                        num_ticks = maximum(material_indices), title = "Media Distribution")
     fig2 = plot_slices(Qel, grid_params, title = "Distribution of Qel [W/m³]")
@@ -167,7 +180,7 @@ function plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V, filena
                            grid_params.lx, grid_params.ly, grid_params.lz,
                            grid_params.nx + 1, grid_params.ny + 1, grid_params.nz + 1),
                        title = "Distribution of V [V]")
-    fig5 = plot_field_directions(E_vec, grid_params; arrow_stride, title = "E-field Direction")
+    fig5 = plot_field_directions(E_vec, grid_params; arrow_density, title = "E-field Direction")
 
     display(GLMakie.Screen(), fig1)
     display(GLMakie.Screen(), fig2)
