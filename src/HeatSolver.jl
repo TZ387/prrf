@@ -1,4 +1,4 @@
-# BioheatSolver.jl
+# HeatSolver.jl
 #
 # Solves the classic (non-perfused) heat equation on the structured voxel grid:
 #
@@ -19,7 +19,7 @@
 # Boundary conditions: zero-flux (Neumann) on all six faces, implemented via
 # ghost-cell reflection (one-sided differences at the boundary).
 
-module BioheatSolver
+module HeatSolver
 
 using ..Config
 
@@ -28,7 +28,7 @@ export compute_stable_dt, solve_heat_phase
 # ── Stability ────────────────────────────────────────────────────────────────
 
 """
-    compute_stable_dt(bioheat_params, grid_params; safety=0.45) -> Float64
+    compute_stable_dt(heat_params, grid_params; safety=0.45) -> Float64
 
 Return the largest Δt that satisfies the explicit-Euler von-Neumann stability
 condition for the heterogeneous heat equation on a uniform Cartesian grid.
@@ -141,7 +141,7 @@ end
 # ── Phase solver ─────────────────────────────────────────────────────────────
 
 """
-    solve_heat_phase(T, Qel_source, bioheat_params, grid_params, t_phase;
+    solve_heat_phase(T, Qel_source, heat_params, grid_params, t_phase;
                      n_update=0, update_cb=nothing) -> T
 
 Advance the temperature field `T` (mutated in-place, a copy is made internally)
@@ -209,4 +209,4 @@ function solve_heat_phase(T_in::Array{Float64,3},
     return T
 end
 
-end # module BioheatSolver
+end # module HeatSolver

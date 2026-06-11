@@ -2,7 +2,7 @@ module RunSimulation
 
 using ..GridSetup
 using ..RFSolver
-using ..BioheatSolver
+using ..HeatSolver
 using ..TimelapseCreation
 using ..PlottingAndVisualization
 
@@ -45,7 +45,7 @@ function run_heat_simulation(Qel, grid_params, heat_params;
         label = state == :on ? "heating" : "cooling"
 
         @info "Phase $phase_idx/$(length(heat_params.schedule)): $label for $(duration) s"
-        T = BioheatSolver.solve_heat_phase(T, Q_src, heat_params, grid_params, duration)
+        T = HeatSolver.solve_heat_phase(T, Q_src, heat_params, grid_params, duration)
     end
 
     return T

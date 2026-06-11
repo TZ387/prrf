@@ -16,7 +16,7 @@ module TimelapseCreation
 using GLMakie
 using Printf
 using ..Config
-using ..BioheatSolver
+using ..HeatSolver
 
 export run_heat_timelapse
 
@@ -102,7 +102,7 @@ function run_heat_timelapse(Qel::Array{Float64,3},
               "$label for $(duration) s  ($(heat_params.n_update) plot updates)"
 
         cb = make_callback(label, t_elapsed)
-        T  = BioheatSolver.solve_heat_phase(
+        T  = HeatSolver.solve_heat_phase(
                  T, Q_src, heat_params, grid_params, duration;
                  n_update  = heat_params.n_update,
                  update_cb = cb)

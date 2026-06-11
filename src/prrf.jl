@@ -3,7 +3,7 @@ module prrf
 include(joinpath(@__DIR__, "Config.jl"))
 include(joinpath(@__DIR__, "GridSetup.jl"))
 include(joinpath(@__DIR__, "RFSolver.jl"))
-include(joinpath(@__DIR__, "BioheatSolver.jl"))
+include(joinpath(@__DIR__, "HeatSolver.jl"))
 include(joinpath(@__DIR__, "TimelapseCreation.jl"))
 include(joinpath(@__DIR__, "PlottingAndVisualization.jl"))
 include(joinpath(@__DIR__, "RunSimulation.jl"))
@@ -12,7 +12,7 @@ include(joinpath(@__DIR__, "SimulationIO.jl"))
 using .Config
 using .GridSetup
 using .RFSolver
-using .BioheatSolver
+using .HeatSolver
 using .TimelapseCreation
 using .PlottingAndVisualization
 using .RunSimulation
