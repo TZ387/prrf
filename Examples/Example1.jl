@@ -62,12 +62,15 @@ function main()
 
     # Load heat parameters
     heat_params = HeatParams(
-        3.0,    # t_on      = Duration of RF heating phase [s]
-        6.0,    # t_off     = Duration of cooling phase after RF is off [s]
-        2,      # n_update  = Number of plot refreshes per phase (on and off)
-        37.0,    # T_initial = Uniform initial temperature [°C]
-        VHC,     # Volumetric heat capacity matrix [J/(m³·K)]
-        k,       # Thermal conductivity matrix [W/(m·K)]
+        [                       # schedule = ordered list of (:on/:off, duration [s]) phases
+            (:on,  3.0),        # heat for 3 s
+            (:off, 6.0),        # cool for 6 s
+            (:on,  3.0),        # heat again for 3 s
+        ],
+        2,                      # n_update  = Number of plot refreshes per phase
+        37.0,                   # T_initial = Uniform initial temperature [°C]
+        VHC,                    # Volumetric heat capacity matrix [J/(m³·K)]
+        k,                      # Thermal conductivity matrix [W/(m·K)]
     )
 
     # Define boundary conditions as functions

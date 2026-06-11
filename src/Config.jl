@@ -3,7 +3,7 @@
 module Config
 
 # Export the structures and functions to make them available outside this module
-export RFParams, HeatParams, GridParams, setup_material_properties, create_coordinate_grids
+export RFParams, HeatParams, HeatSchedule, GridParams, setup_material_properties, create_coordinate_grids
 
 # Parameters for RF problem
 struct RFParams
@@ -12,11 +12,16 @@ struct RFParams
     ω::Float64  # (Circular) Frequency of the RF signal [Hz]
 end
 
-# Parameters for bioheat problem
+# Ordered sequence of heating/cooling phases.
+# Each entry is a (Symbol, Float64) tuple where the symbol is :on or :off
+# and the float is the duration of that phase in seconds.
+# Example: [(:on, 30.0), (:off, 60.0), (:on, 15.0)]
+const HeatSchedule = Vector{Tuple{Symbol, Float64}}
+
+# Parameters for heat problem
 struct HeatParams
-    t_on::Float64               # Duration of RF heating phase [s]
-    t_off::Float64              # Duration of cooling phase after RF is switched off [s]
-    n_update::Int               # Number of plot updates during each phase (on and off)
+    schedule::HeatSchedule      # Ordered sequence of (:on/:off, duration [s]) phases
+    n_update::Int               # Number of plot updates per phase
     T_initial::Float64          # Uniform initial temperature [°C]
     VHC::Array{Float64, 3}      # Volumetric heat capacity [J/(m³·K)]  (VHC = rho * c)
     k::Array{Float64, 3}        # Thermal conductivity [W/(m·K)]

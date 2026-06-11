@@ -27,24 +27,28 @@ end
 function run_heat_simulation(Qel, grid_params, heat_params;
                         create_timelapse::Bool = false)
 
-    T_final = nothing
     if create_timelapse
         @info "Running heat simulation with live plot..."
-        T_final = TimelapseCreation.run_heat_timelapse(Qel, heat_params, grid_params)
-    else
-        @info "Running heat simulation (no live plot)..."
-        Qzero = zeros(Float64, grid_params.nx, grid_params.ny, grid_params.nz)
-
-        # Heating phase
-        T = fill(heat_params.T_initial, grid_params.nx, grid_params.ny, grid_params.nz)
-        T = BioheatSolver.solve_heat_phase(T, Qel, heat_params, grid_params,
-                                            heat_params.t_on)
-        # Cooling phase
-        T_final = BioheatSolver.solve_heat_phase(T, Qzero, heat_params, grid_params,
-                                                    heat_params.t_off)
+        return TimelapseCreation.run_heat_timelapse(Qel, heat_params, grid_params)
     end
 
-    return T_final
+    @info "Running heat simulation (no live plot)..."
+    Qzero = zeros(Float64, grid_params.nx, grid_params.ny, grid_params.nz)
+    T = fill(heat_params.T_initial, grid_params.nx, grid_params.ny, grid_params.nz)
+
+    for (phase_idx, (state, duration)) in enumerate(heat_params.schedule)
+        state in (:on, :off) || error(
+            "Unknown phase state $(repr(state)) in schedule entry $phase_idx. " *
+            "Expected :on or :off.")
+
+        Q_src = state == :on ? Qel : Qzero
+        label = state == :on ? "heating" : "cooling"
+
+        @info "Phase $phase_idx/$(length(heat_params.schedule)): $label for $(duration) s"
+        T = BioheatSolver.solve_heat_phase(T, Q_src, heat_params, grid_params, duration)
+    end
+
+    return T
 end
 
 end  # module RunSimulation
