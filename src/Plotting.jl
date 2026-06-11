@@ -1,4 +1,4 @@
-module PlottingAndVisualization
+module Plotting
 
 using GLMakie
 using ..Config
