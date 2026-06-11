@@ -1,4 +1,4 @@
-# TimelapseCreation.jl
+# Timelapse.jl
 #
 # Live-updating heat simulation visualisation using GLMakie observables.
 #
@@ -31,7 +31,7 @@
 #   worker thread → solve_heat_phase × N → put!(channel, snapshot)
 #   main thread   → polling loop { take! + obs[] = ..., sleep(0.05) }
 
-module TimelapseCreation
+module Timelapse
 
 using GLMakie
 using Printf
@@ -166,4 +166,4 @@ function run_heat_timelapse(Qel::Array{Float64,3},
     return fetch(sim_task)
 end
 
-end # module TimelapseCreation
+end # module Timelapse

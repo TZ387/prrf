@@ -3,7 +3,7 @@ module RunSimulation
 using ..GridSetup
 using ..RFSolver
 using ..HeatSolver
-using ..TimelapseCreation
+using ..Timelapse
 using ..PlottingAndVisualization
 
 export run_simulation, run_heat_simulation
@@ -29,7 +29,7 @@ function run_heat_simulation(Qel, grid_params, heat_params;
 
     if create_timelapse
         @info "Running heat simulation with live plot..."
-        return TimelapseCreation.run_heat_timelapse(Qel, heat_params, grid_params)
+        return Timelapse.run_heat_timelapse(Qel, heat_params, grid_params)
     end
 
     @info "Running heat simulation (no live plot)..."

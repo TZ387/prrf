@@ -4,7 +4,7 @@ include(joinpath(@__DIR__, "Config.jl"))
 include(joinpath(@__DIR__, "GridSetup.jl"))
 include(joinpath(@__DIR__, "RFSolver.jl"))
 include(joinpath(@__DIR__, "HeatSolver.jl"))
-include(joinpath(@__DIR__, "TimelapseCreation.jl"))
+include(joinpath(@__DIR__, "Timelapse.jl"))
 include(joinpath(@__DIR__, "PlottingAndVisualization.jl"))
 include(joinpath(@__DIR__, "RunSimulation.jl"))
 include(joinpath(@__DIR__, "SimulationIO.jl"))
@@ -13,7 +13,7 @@ using .Config
 using .GridSetup
 using .RFSolver
 using .HeatSolver
-using .TimelapseCreation
+using .Timelapse
 using .PlottingAndVisualization
 using .RunSimulation
 using .SimulationIO
