@@ -8,7 +8,7 @@ using ..PlottingAndVisualization
 
 export run_simulation
 
-function run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions)
+function run_simulation(grid_params, rf_params, heat_params, boundary_conditions)
 
     n_cells = grid_params.nx * grid_params.ny * grid_params.nz
     @info "Setting up grid ($(grid_params.nx)×$(grid_params.ny)×$(grid_params.nz), $n_cells cells)..."

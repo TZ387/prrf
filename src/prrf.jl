@@ -14,7 +14,7 @@ using .PlottingAndVisualization
 using .RunSimulation
 using .SimulationIO
 
-export GridParams, RFParams, BioheatParams, setup_material_properties, create_coordinate_grids
+export GridParams, RFParams, HeatParams, setup_material_properties, create_coordinate_grids
 export setup_grid
 export solve_rf, calculate_fields, convert_V
 export plot_slices, plot_field_directions, plot_graphs

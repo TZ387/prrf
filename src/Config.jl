@@ -3,7 +3,7 @@
 module Config
 
 # Export the structures and functions to make them available outside this module
-export RFParams, BioheatParams, GridParams, setup_material_properties, create_coordinate_grids
+export RFParams, HeatParams, GridParams, setup_material_properties, create_coordinate_grids
 
 # Parameters for RF problem
 struct RFParams
@@ -13,16 +13,13 @@ struct RFParams
 end
 
 # Parameters for bioheat problem
-struct BioheatParams
-    Δt::Float64  # Time step size [s]
-    num_steps::Int  # Number of time steps to simulate
-    VHC::Array{Float64, 3}  # Volumetric heat capacity matrix [J/(m³·K)] (VHC = rho * c)
-    k::Array{Float64, 3}  # Thermal conductivity matrix [W/(m·K)]
-    rho_b::Float64  # Blood density [kg/m³]
-    cb::Float64  # Specific heat capacity of blood [J/(kg·K)]
-    ωb::Float64  # Blood perfusion rate [1/s]
-    Ta::Float64  # Arterial temperature [°C]
-    Qmet::Float64  # Metabolic heat generation term [W/m³]
+struct HeatParams
+    t_on::Float64               # Duration of RF heating phase [s]
+    t_off::Float64              # Duration of cooling phase after RF is switched off [s]
+    n_update::Int               # Number of plot updates during each phase (on and off)
+    T_initial::Float64          # Uniform initial temperature [°C]
+    VHC::Array{Float64, 3}      # Volumetric heat capacity [J/(m³·K)]  (VHC = rho * c)
+    k::Array{Float64, 3}        # Thermal conductivity [W/(m·K)]
 end
 
 # Parameters for grid setup

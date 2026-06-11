@@ -59,18 +59,16 @@ function main()
         1e6,     # ω = (Circular) Frequency of the RF signal [Hz]
     )
 
-    # Load bioheat parameters
-    bioheat_params = BioheatParams(
-        1.0,     # Δt = Time step size [s]
-        100,     # num_steps = Number of time steps to simulate
-        VHC,       # Volumetric heat capacity matrix [J/(m³·K)]
+    # Load heat parameters
+    heat_params = HeatParams(
+        30.0,    # t_on      = Duration of RF heating phase [s]
+        60.0,    # t_off     = Duration of cooling phase after RF is off [s]
+        10,      # n_update  = Number of plot refreshes per phase (on and off)
+        37.0,    # T_initial = Uniform initial temperature [°C]
+        VHC,     # Volumetric heat capacity matrix [J/(m³·K)]
         k,       # Thermal conductivity matrix [W/(m·K)]
-        1050.0,  # rho_b = Blood density [kg/m³]
-        3600.0,  # cb = Specific heat capacity of blood [J/(kg·K)]
-        0.001,   # ωb = Blood perfusion rate [1/s]
-        37.0,    # Ta = Arterial temperature [°C]
-        0.0      # Qmet = Metabolic heat generation term [W/m³]
     )
+
 
     # Parameters for the circular electrode
     x_center = 0.005  # X-coordinate of the center of the electrode
@@ -95,7 +93,7 @@ function main()
     )
 
     # Run the simulation using the RunSimulation module and plot graphs
-    grid, V_dof, Qel, E_mag, E_vec, V = run_simulation(grid_params, rf_params, bioheat_params, boundary_conditions);
+    grid, V_dof, Qel, E_mag, E_vec, V = run_simulation(grid_params, rf_params, heat_params, boundary_conditions);
     plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V)
 
     
