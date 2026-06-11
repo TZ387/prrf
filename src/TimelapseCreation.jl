@@ -7,20 +7,51 @@
 #
 #   [(:on, 30.0), (:off, 60.0), (:on, 15.0)]
 #
-# The cross-section plot (XZ mid-plane slice of T) is refreshed exactly
-# n_update times per phase.  Plot updates happen inside the time-stepping loop
-# via a callback — no frames are captured; the window just updates live.
+# Threading model
+# ───────────────
+# The root cause of VS Code's "not responding" freeze is that the heavy solver
+# loop and the GLMakie window event loop both run on the same (main) thread.
+# The OS sees the thread busy for seconds at a time and marks the window
+# unresponsive.
+#
+# Fix: the entire heat simulation runs on a worker thread (Threads.@spawn).
+# The main thread never blocks on the solver — it sits in a lightweight
+# polling loop that (a) drains incoming plot snapshots from a Channel and
+# writes them to Observables, and (b) calls sleep(0.05) between polls to
+# yield back to the GLMakie event loop.
+#
+# Why a Channel and not direct Observable writes from the worker?
+# GLMakie requires all Observable assignments to happen on the main thread.
+# Writing obs[] = ... from a worker thread causes race conditions and
+# occasional crashes.  The Channel decouples the two threads cleanly:
+# the worker puts a cheap snapshot struct into it; the main thread takes
+# snapshots out and does all Observable writes itself.
+#
+# Layout:
+#   worker thread → solve_heat_phase × N → put!(channel, snapshot)
+#   main thread   → polling loop { take! + obs[] = ..., sleep(0.05) }
 
 module TimelapseCreation
 
 using GLMakie
 using Printf
+using Base.Threads
 using ..Config
 using ..HeatSolver
 
 export run_heat_timelapse
 
-# ── Helper: mid-plane slice index ────────────────────────────────────────────
+# ── Snapshot carried through the channel ─────────────────────────────────────
+
+struct PlotSnapshot
+    slice :: Matrix{Float64}  # copy of T[:, jmid, :], made on worker thread
+    t_sim :: Float64          # simulation time [s]
+    label :: String
+    T_min :: Float64
+    T_max :: Float64
+end
+
+# ── Helper ────────────────────────────────────────────────────────────────────
 
 mid(n) = max(1, n ÷ 2)
 
@@ -29,28 +60,30 @@ mid(n) = max(1, n ÷ 2)
 """
     run_heat_timelapse(Qel, heat_params, grid_params)
 
-Run the heat simulation according to `heat_params.schedule` and display a
-live-updating XZ cross-section plot of the temperature field.
+Run the multi-phase heat simulation on a worker thread while displaying a
+live-updating XZ cross-section plot on the main thread.
 
-The RF source `Qel` is an (nx, ny, nz) array of volumetric power density
-[W/m³] computed by the RF solver.  It is used during `:on` phases; `:off`
-phases use a zero source.
-
-The plot is refreshed `n_update` times per phase.
+The window stays fully responsive because the main thread never blocks on
+the solver — it only services the GLMakie event loop and drains a Channel
+of plot snapshots produced by the worker.
 """
 function run_heat_timelapse(Qel::Array{Float64,3},
                             heat_params::Config.HeatParams,
                             grid_params::Config.GridParams)
 
     nx, ny, nz = grid_params.nx, grid_params.ny, grid_params.nz
-    jmid = mid(ny)
+    jmid  = mid(ny)
     Qzero = zeros(Float64, nx, ny, nz)
 
-    # ── Initial temperature field ─────────────────────────────────────────────
-    T = fill(heat_params.T_initial, nx, ny, nz)
+    # ── Channel ───────────────────────────────────────────────────────────────
+    # Capacity 4: small buffer so the worker is never held up long waiting for
+    # the main thread to drain, but also doesn't queue stale frames.
+    # Nothing (::Nothing) is the sentinel that signals simulation is done.
+    snapshot_ch = Channel{Union{PlotSnapshot, Nothing}}(4)
 
-    # ── Makie scene setup ─────────────────────────────────────────────────────
-    slice_obs  = Observable(T[:, jmid, :])
+    # ── Build the Makie scene on the main thread ──────────────────────────────
+    T0         = fill(heat_params.T_initial, nx, ny, nz)
+    slice_obs  = Observable(T0[:, jmid, :])
     title_obs  = Observable("t = 0.00 s")
     crange_obs = Observable((heat_params.T_initial, heat_params.T_initial + 1.0))
 
@@ -59,60 +92,78 @@ function run_heat_timelapse(Qel::Array{Float64,3},
                title  = title_obs,
                xlabel = "x index",
                ylabel = "z index")
-
-    hm = heatmap!(ax, slice_obs;
-                  colormap   = :thermal,
-                  colorrange = crange_obs)
+    hm  = heatmap!(ax, slice_obs;
+                   colormap   = :thermal,
+                   colorrange = crange_obs)
     Colorbar(fig[1, 2], hm; label = "Temperature [°C]")
-
     display(fig)
 
-    # ── Callback factory ──────────────────────────────────────────────────────
-    # Returns a closure over (phase_label, t_offset) that updates the
-    # observables and triggers a repaint when called with (T, t_local).
+    # ── Worker thread ─────────────────────────────────────────────────────────
+    sim_task = Threads.@spawn begin
+        T         = copy(T0)
+        t_elapsed = 0.0
 
-    function make_callback(phase_label::String, t_offset::Float64)
-        return function(T_current::Array{Float64,3}, t_local::Float64)
-            Tslice = T_current[:, jmid, :]
-            Tmin   = minimum(T_current)
-            Tmax   = maximum(T_current)
-            if Tmax ≈ Tmin
-                Tmax = Tmin + 1.0
+        for (phase_idx, (state, duration)) in enumerate(heat_params.schedule)
+
+            state in (:on, :off) || error(
+                "Unknown phase state $(repr(state)) in schedule entry $phase_idx. " *
+                "Expected :on or :off.")
+
+            label = state == :on ? "heating" : "cooling"
+            Q_src = state == :on ? Qel : Qzero
+
+            @info "Phase $phase_idx/$(length(heat_params.schedule)): " *
+                  "$label for $(duration) s  ($(heat_params.n_update) plot updates)"
+
+            # t_elapsed captured by value for this phase's closure
+            t_off = t_elapsed
+
+            cb = (T_curr, t_local) -> begin
+                s    = T_curr[:, jmid, :]   # copy slice on worker — safe
+                Tmin = minimum(T_curr)
+                Tmax = maximum(T_curr)
+                Tmax = Tmax ≈ Tmin ? Tmin + 1.0 : Tmax
+                put!(snapshot_ch,
+                     PlotSnapshot(s, t_off + t_local, label, Tmin, Tmax))
             end
-            slice_obs[]  = Tslice
-            crange_obs[] = (Tmin, Tmax)
-            title_obs[]  = @sprintf("t = %.2f s  [%s]", t_offset + t_local, phase_label)
-            sleep(0.0)  # yield to the event loop so GLMakie repaints
+
+            T = HeatSolver.solve_heat_phase(
+                    T, Q_src, heat_params, grid_params, duration;
+                    n_update  = heat_params.n_update,
+                    update_cb = cb)
+
+            @info "Phase $phase_idx complete.  " *
+                  "Peak T = $(round(maximum(T); digits=2)) °C"
+
+            t_elapsed += duration
         end
+
+        put!(snapshot_ch, nothing)  # sentinel: tell main thread we are done
+        return T
     end
 
-    # ── Schedule loop ─────────────────────────────────────────────────────────
-    t_elapsed = 0.0   # wall-clock simulation time across all phases
-
-    for (phase_idx, (state, duration)) in enumerate(heat_params.schedule)
-
-        state in (:on, :off) || error(
-            "Unknown phase state $(repr(state)) in schedule entry $phase_idx. " *
-            "Expected :on or :off.")
-
-        label  = state == :on ? "heating" : "cooling"
-        Q_src  = state == :on ? Qel : Qzero
-
-        @info "Phase $phase_idx/$( length(heat_params.schedule)): " *
-              "$label for $(duration) s  ($(heat_params.n_update) plot updates)"
-
-        cb = make_callback(label, t_elapsed)
-        T  = HeatSolver.solve_heat_phase(
-                 T, Q_src, heat_params, grid_params, duration;
-                 n_update  = heat_params.n_update,
-                 update_cb = cb)
-
-        @info "Phase $phase_idx complete.  Peak T = $(round(maximum(T); digits=2)) °C"
-
-        t_elapsed += duration
+    # ── Main thread polling loop ──────────────────────────────────────────────
+    # Runs until the worker sends the nothing sentinel.
+    # sleep(0.05) is the key: it yields to the GLMakie event loop every 50 ms,
+    # which is more than enough for a responsive window.
+    done = false
+    while !done
+        # Drain everything currently queued before sleeping
+        while isready(snapshot_ch)
+            snap = take!(snapshot_ch)
+            if snap === nothing
+                done = true
+                break
+            end
+            slice_obs[]  = snap.slice
+            crange_obs[] = (snap.T_min, snap.T_max)
+            title_obs[]  = @sprintf("t = %.2f s  [%s]", snap.t_sim, snap.label)
+        end
+        sleep(0.05)
     end
 
-    return T
+    # Re-throw any exception that occurred on the worker, and return T_final.
+    return fetch(sim_task)
 end
 
 end # module TimelapseCreation
