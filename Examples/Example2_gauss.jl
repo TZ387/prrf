@@ -30,9 +30,6 @@ function define_material_properties()
 end
 
 function main()
-    # Flags for use
-    use_gpu = false              # Decide if you want to use GPU for calculations or not
-    create_timelapse = false     # Decide if you want to create a timelapse of the heat simulation
 
     # Define grid parameters
     grid_params = GridParams(
