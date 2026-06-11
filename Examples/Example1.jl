@@ -78,16 +78,16 @@ function main()
     )
 
     # Run the simulation
-    grid, V_dof, Qel, E_mag, E_vec, V, T_final = run_simulation(
-        grid_params, rf_params, heat_params, boundary_conditions;
-        run_heat = true,
-        create_timelapse = create_timelapse)
+    grid, V_dof, Qel, E_mag, E_vec, V = run_simulation(
+        grid_params, rf_params, boundary_conditions);
 
     # Save RF results
     save_simulation("Example1.h5", grid_params, material_indices;
         Qel=Qel, E_mag=E_mag, V=V)
 
     plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V)
+
+    T_final = run_heat_simulation(Qel, grid_params, heat_params; create_timelapse = create_timelapse)
 
     return grid, V_dof, Qel, E_mag, E_vec, V, T_final
 end

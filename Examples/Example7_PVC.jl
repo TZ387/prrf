@@ -93,10 +93,8 @@ function main()
     )
 
     # Run the simulation
-    grid, V_dof, Qel, E_mag, E_vec, V, T_final = run_simulation(
-        grid_params, rf_params, heat_params, boundary_conditions;
-        run_heat = false,
-        create_timelapse = create_timelapse)
+    grid, V_dof, Qel, E_mag, E_vec, V = run_simulation(
+        grid_params, rf_params, boundary_conditions);
     plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V)
 
     
@@ -106,8 +104,8 @@ function main()
     fig5 = plot_slices(Qel_bio, grid_params, title = "Qel in Biological Tissue Only [W/m³]")
     window5 = display(GLMakie.Screen(), fig5)
     
-    return grid, V_dof, Qel, E_mag, E_vec, V, T_final
+    return grid, V_dof, Qel, E_mag, E_vec, V
 end
 
 # Call the main function and return values for potential inspection
-grid, V_dof, Qel, E_mag, E_vec, V, T_final = main();
+grid, V_dof, Qel, E_mag, E_vec, V = main();

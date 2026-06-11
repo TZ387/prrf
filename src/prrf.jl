@@ -24,7 +24,7 @@ export solve_rf, calculate_fields, convert_V
 export compute_stable_dt, solve_heat_phase
 export run_heat_timelapse
 export plot_slices, plot_field_directions, plot_graphs
-export run_simulation
+export run_simulation, run_heat_simulation
 export save_simulation, load_simulation
 
 end
