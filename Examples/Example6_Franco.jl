@@ -58,16 +58,6 @@ function main()
         1e6,        # ω = (Circular) Frequency of the RF signal [Hz]
     )
 
-    # Load heat parameters
-    heat_params = HeatParams(
-        30.0,    # t_on      = Duration of RF heating phase [s]
-        60.0,    # t_off     = Duration of cooling phase after RF is off [s]
-        10,      # n_update  = Number of plot refreshes per phase (on and off)
-        37.0,    # T_initial = Uniform initial temperature [°C]
-        VHC,     # Volumetric heat capacity matrix [J/(m³·K)]
-        k,       # Thermal conductivity matrix [W/(m·K)]
-    )
-
 
     boundary_conditions = Dict(
         "top" => (x, t) -> 0.0,
