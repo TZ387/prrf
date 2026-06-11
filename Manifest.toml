@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "6132e134a4135f4171d7f920134e1b7ddc07f915"
+project_hash = "fa6ef6e352767e6d485d4c4f6782b97f732b6f8f"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1882,7 +1882,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 version = "17.7.0+0"
 
 [[deps.prrf]]
-deps = ["Ferrite", "GLMakie", "GeometryBasics", "HDF5", "IterativeSolvers", "LinearAlgebra", "LinearMaps", "SparseArrays", "Statistics", "Tensors"]
+deps = ["Ferrite", "GLMakie", "HDF5", "IterativeSolvers", "LinearAlgebra", "LinearMaps", "SparseArrays", "StaticArrays", "Statistics", "Tensors"]
 path = "."
 uuid = "b5d11546-cacb-4622-8a6b-042bba915b18"
 version = "0.1.0"

@@ -83,12 +83,15 @@ function main()
         "bottom" => (x, t) -> A * exp(-((x[1] - mu)^2 + (x[2] - 0.001)^2) / (2 * sigma2^2))  # Bottom boundary condition remains zero
     )
 
-    # Run the simulation using the RunSimulation module and plot graphs
-    grid, V_dof, Qel, E_mag, E_vec, V = run_simulation(grid_params, rf_params, heat_params, boundary_conditions);
+    # Run the simulation
+    grid, V_dof, Qel, E_mag, E_vec, V, T_final = run_simulation(
+        grid_params, rf_params, heat_params, boundary_conditions;
+        run_heat = false,
+        create_timelapse = create_timelapse)
     plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V)
 
-    return grid, V_dof, Qel, E_mag, E_vec, V
+    return grid, V_dof, Qel, E_mag, E_vec, V, T_final
 end
 
 # Call the main function and return values for potential inspection
-grid, V_dof, Qel, E_mag, E_vec, V = main();
+grid, V_dof, Qel, E_mag, E_vec, V, T_final = main();

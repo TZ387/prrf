@@ -36,7 +36,7 @@ condition for the heterogeneous heat equation on a uniform Cartesian grid.
 The criterion per cell is  Δt ≤ VHC / (2k · Σ 1/Δξ²),  and we take the
 global minimum over all cells.  `safety < 0.5` provides a margin.
 """
-function compute_stable_dt(bioheat_params::Config.BioheatParams,
+function compute_stable_dt(heat_params::Config.HeatParams,
                            grid_params::Config.GridParams;
                            safety::Float64 = 0.45)
     dx = grid_params.lx / grid_params.nx
@@ -45,8 +45,8 @@ function compute_stable_dt(bioheat_params::Config.BioheatParams,
 
     inv_sum = 1.0/dx^2 + 1.0/dy^2 + 1.0/dz^2   # same for every cell (uniform grid)
 
-    k   = bioheat_params.k
-    VHC = bioheat_params.VHC
+    k   = heat_params.k
+    VHC = heat_params.VHC
 
     # Avoid division by zero for cells with k = 0 (should not happen physically,
     # but guard anyway).
@@ -154,7 +154,7 @@ Returns the updated temperature array.
 """
 function solve_heat_phase(T_in::Array{Float64,3},
                           Qel_source::Array{Float64,3},
-                          bioheat_params::Config.BioheatParams,
+                          heat_params::Config.HeatParams,
                           grid_params::Config.GridParams,
                           t_phase::Float64;
                           n_update::Int = 0,
@@ -167,10 +167,10 @@ function solve_heat_phase(T_in::Array{Float64,3},
     dy  = grid_params.ly / grid_params.ny
     dz  = grid_params.lz / grid_params.nz
 
-    k   = bioheat_params.k
-    VHC = bioheat_params.VHC
+    k   = heat_params.k
+    VHC = heat_params.VHC
 
-    Δt  = compute_stable_dt(bioheat_params, grid_params)
+    Δt  = compute_stable_dt(heat_params, grid_params)
 
     # Total number of time steps for this phase
     num_steps = ceil(Int, t_phase / Δt)

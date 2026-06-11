@@ -1,3 +1,4 @@
+# Example1.jl
 # Include the main module - this loads all submodules
 using prrf
 
@@ -21,18 +22,18 @@ function define_material_properties()
     materials = Dict{Int, NamedTuple}()
     
     epsilon_0 = 8.854e-12  # Permittivity of free space [F/m]
-    materials[1] = (name = "Gel", sigma = 0.3, epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.025)
-    materials[2] = (name = "Skin", sigma = 0.22, epsilon_im = 0*epsilon_0, VHC = 4.18e6, k = 0.6)
-    materials[3] = (name = "Fat", sigma = 0.025, epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.5)
-    materials[4] = (name = "Muscle", sigma = 0.5, epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.5)
+    materials[1] = (name = "Gel",    sigma = 0.3,   epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.025)
+    materials[2] = (name = "Skin",   sigma = 0.22,  epsilon_im = 0*epsilon_0, VHC = 4.18e6, k = 0.6)
+    materials[3] = (name = "Fat",    sigma = 0.025, epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.5)
+    materials[4] = (name = "Muscle", sigma = 0.5,   epsilon_im = 0*epsilon_0, VHC = 1.0e6, k = 0.5)
     
     return materials
 end
 
 function main()
     # Flags for use
-    use_gpu = false              # Decide if you want to use GPU for calculations or not
-    create_timelapse = false     # Decide if you want to create a timelapse of the heat simulation
+    use_gpu          = false   # Decide if you want to use GPU for calculations or not
+    create_timelapse = true    # Show live-updating heat plot during simulation
 
     # Define grid parameters
     grid_params = GridParams(
@@ -45,49 +46,51 @@ function main()
     )
 
     # Load materials and geometry
-    materials = define_material_properties()
+    materials       = define_material_properties()
     material_indices = geometryDefinition(grid_params)
 
     # Setup material properties (delegated to Config.jl)
-    sigma, epsilon_im, VHC, k = setup_material_properties(material_indices, materials, grid_params.nx, grid_params.ny, grid_params.nz)
+    sigma, epsilon_im, VHC, k = setup_material_properties(
+        material_indices, materials, grid_params.nx, grid_params.ny, grid_params.nz)
 
     # Load RF parameters
     rf_params = RFParams(
-        sigma,   # Electrical conductivity matrix [S/m]
-        epsilon_im, # Permittivity matrix [F/m]
-        1e6,     # ω = (Circular) Frequency of the RF signal [Hz]
+        sigma,       # Electrical conductivity matrix [S/m]
+        epsilon_im,  # Permittivity matrix [F/m]
+        1e6,         # ω = (Circular) Frequency of the RF signal [Hz]
     )
 
     # Load heat parameters
     heat_params = HeatParams(
-        30.0,    # t_on      = Duration of RF heating phase [s]
-        60.0,    # t_off     = Duration of cooling phase after RF is off [s]
-        10,      # n_update  = Number of plot refreshes per phase (on and off)
+        3.0,    # t_on      = Duration of RF heating phase [s]
+        6.0,    # t_off     = Duration of cooling phase after RF is off [s]
+        2,      # n_update  = Number of plot refreshes per phase (on and off)
         37.0,    # T_initial = Uniform initial temperature [°C]
         VHC,     # Volumetric heat capacity matrix [J/(m³·K)]
         k,       # Thermal conductivity matrix [W/(m·K)]
     )
 
-
     # Define boundary conditions as functions
     boundary_conditions = Dict(
         "bottom" => (x, t) -> 10.0,
-        "top" => (x, t) -> 0.0
+        "top"    => (x, t) -> 0.0
         # Add other boundaries here as needed
     )
 
+    # Run the simulation
+    grid, V_dof, Qel, E_mag, E_vec, V, T_final = run_simulation(
+        grid_params, rf_params, heat_params, boundary_conditions;
+        run_heat = true,
+        create_timelapse = create_timelapse)
 
-    # Run the simulation using the RunSimulation module and plot graphs
-    grid, V_dof, Qel, E_mag, E_vec, V = run_simulation(grid_params, rf_params, heat_params, boundary_conditions);
-
-    # Save
+    # Save RF results
     save_simulation("Example1.h5", grid_params, material_indices;
         Qel=Qel, E_mag=E_mag, V=V)
 
     plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V)
 
-    return grid, V_dof, Qel, E_mag, E_vec, V
+    return grid, V_dof, Qel, E_mag, E_vec, V, T_final
 end
 
 # Call the main function and return values for potential inspection
-grid, V_dof, Qel, E_mag, E_vec, V = main();
+grid, V_dof, Qel, E_mag, E_vec, V, T_final = main();

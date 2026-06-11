@@ -40,14 +40,14 @@ Updates the plot `n_update` times during the heating phase and `n_update`
 times during the cooling phase (total 2·n_update frame refreshes).
 """
 function run_heat_timelapse(Qel::Array{Float64,3},
-                            bioheat_params::Config.BioheatParams,
+                            heat_params::Config.HeatParams,
                             grid_params::Config.GridParams)
 
     nx, ny, nz = grid_params.nx, grid_params.ny, grid_params.nz
     jmid = mid(ny)   # fixed y-index for the XZ slice
 
     # ── Initial temperature field ────────────────────────────────────────────
-    T = fill(bioheat_params.T_initial, nx, ny, nz)
+    T = fill(heat_params.T_initial, nx, ny, nz)
 
     # ── Makie scene setup ────────────────────────────────────────────────────
     # Observable wrapping the 2-D slice shown in the heatmap.
@@ -62,7 +62,7 @@ function run_heat_timelapse(Qel::Array{Float64,3},
 
     # Color range observable — updated as simulation progresses so the scale
     # always spans the current min/max of the full 3-D field.
-    crange_obs = Observable((bioheat_params.T_initial, bioheat_params.T_initial + 1.0))
+    crange_obs = Observable((heat_params.T_initial, heat_params.T_initial + 1.0))
 
     hm = heatmap!(ax, slice_obs;
                   colormap = :thermal,
@@ -93,31 +93,31 @@ function run_heat_timelapse(Qel::Array{Float64,3},
     end
 
     # ── Phase 1: RF on ───────────────────────────────────────────────────────
-    @info "Starting heating phase (t_on = $(bioheat_params.t_on) s, " *
-          "$(bioheat_params.n_update) plot updates)..."
+    @info "Starting heating phase (t_on = $(heat_params.t_on) s, " *
+          "$(heat_params.n_update) plot updates)..."
 
     cb_on = make_callback("heating")
     T = BioheatSolver.solve_heat_phase(
-            T, Qel, bioheat_params, grid_params, bioheat_params.t_on;
-            n_update = bioheat_params.n_update,
+            T, Qel, heat_params, grid_params, heat_params.t_on;
+            n_update = heat_params.n_update,
             update_cb = cb_on)
 
     @info "Heating phase complete.  Peak T = $(round(maximum(T); digits=2)) °C"
 
     # ── Phase 2: RF off (cooling) ────────────────────────────────────────────
-    @info "Starting cooling phase (t_off = $(bioheat_params.t_off) s, " *
-          "$(bioheat_params.n_update) plot updates)..."
+    @info "Starting cooling phase (t_off = $(heat_params.t_off) s, " *
+          "$(heat_params.n_update) plot updates)..."
 
     Qzero = zeros(Float64, nx, ny, nz)
     cb_off = make_callback("cooling")
 
     # Offset time so the displayed time continues from t_on
-    t_offset = bioheat_params.t_on
+    t_offset = heat_params.t_on
     cb_off_offset = (T_curr, t) -> cb_off(T_curr, t + t_offset)
 
     T = BioheatSolver.solve_heat_phase(
-            T, Qzero, bioheat_params, grid_params, bioheat_params.t_off;
-            n_update = bioheat_params.n_update,
+            T, Qzero, heat_params, grid_params, heat_params.t_off;
+            n_update = heat_params.n_update,
             update_cb = cb_off_offset)
 
     @info "Cooling phase complete.  Final peak T = $(round(maximum(T); digits=2)) °C"

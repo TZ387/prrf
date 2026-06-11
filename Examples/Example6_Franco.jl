@@ -88,7 +88,10 @@ function main()
     )
 
     # Run the simulation
-    grid, V_dof, Qel, E_mag, E_vec, V = run_simulation(grid_params, rf_params, heat_params, boundary_conditions)
+    grid, V_dof, Qel, E_mag, E_vec, V, T_final = run_simulation(
+        grid_params, rf_params, heat_params, boundary_conditions;
+        run_heat = false,
+        create_timelapse = create_timelapse)
 
     # Save all relevant fields — V_dof and E are now included alongside the rest
     save_simulation("Example6_Franco.h5", grid_params, material_indices;
@@ -100,10 +103,10 @@ function main()
 
     plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V, "Images/Example6_Franco")
 
-    return grid, V_dof, Qel, E_mag, E_vec, V
+    return grid, V_dof, Qel, E_mag, E_vec, V, T_final
 end
 
 # Call the main function and return values for potential inspection.
 # invokelatest ensures Julia uses the most recent world age for `main`,
 # avoiding the world-age warning introduced in Julia 1.12.
-grid, V_dof, Qel, E_mag, E_vec, V = Base.invokelatest(main);
+grid, V_dof, Qel, E_mag, E_vec, V, T_final = Base.invokelatest(main);
