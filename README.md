@@ -1,40 +1,93 @@
 The project is still in development.
 
-# RFSolver
+# prrf
 
-A program that calculates electric potential in tissue in case of RF heating for arbitrary boundary conditions.
+A program for RF heating simulation in biological tissue. Given an arbitrary electrode geometry and boundary conditions, it computes the electric potential, electric field, and ohmic heat dissipation in the tissue, and then uses that dissipation as a source term to evolve the temperature field over time.
 
 ## 1. Theoretical basis
 
-The RF heating is a procedure where two or more electrodes are used to apply alternating electrical current to tissue, with for example one electrode applying alternating electrical potential, while the other acts as some kind of "electrical ground"
+### 1.1 RF electric field
 
-The main equation for calculating electrical potential in the tissue is:
+The RF heating procedure uses two or more electrodes to apply alternating electrical current to tissue — one electrode applies an alternating electrical potential, while the other acts as an electrical ground.
+
+The governing equation for the electric potential in the tissue is:
 
 $$\nabla[(\sigma - i\omega\epsilon)(\nabla V)]=0$$
-or when considering $\epsilon = \epsilon^/ + i\epsilon^{//}$ and that $\epsilon^/$ just gives some phase shift that does not matter when we consider RF heating with typical frequency in range of 10⁶/s:
-$$\nabla[(\sigma + \omega\epsilon^{//})(\nabla V)]=0$$
 
-Here, $\sigma$ [S/m] is electrical conductivity, i is imaginary unit, $\omega$ [1/s] is the angular frequency, $V$ is electric potential, and $\epsilon$ [F/m] is the electrical permittivity of the material.
+Considering $\epsilon = \epsilon' + i\epsilon''$ and that the real part $\epsilon'$ only introduces a phase shift that does not affect RF heating at typical frequencies in the range of $10^6$ s$^{-1}$, this simplifies to:
 
-It should be noted that the electrical permittivity, denoted here as $\epsilon$, is actually product of vacuum permittivity ${\epsilon}_0$ [F/m] with approximate value of 8.85e-12 and relative permittivity ${\epsilon}_r$ [/]. so that the following relation is valid
+$$\nabla[(\sigma + \omega\epsilon'')(\nabla V)]=0$$
 
-$$D=\epsilon E={\epsilon}_0 {\epsilon}_r E$$
+Here, $\sigma$ [S/m] is electrical conductivity, $\omega$ [1/s] is the angular frequency, $V$ [V] is the electric potential, and $\epsilon$ [F/m] is the electrical permittivity of the material.
+
+Note that $\epsilon$ is the product of the vacuum permittivity $\epsilon_0 \approx 8.85 \times 10^{-12}$ F/m and the relative permittivity $\epsilon_r$:
+
+$$D = \epsilon E = \epsilon_0 \epsilon_r E$$
+
+Once $V$ is known, the electric field is $\mathbf{E} = -\nabla V$ [V/m], and the ohmic power density (volumetric heat source) deposited in the tissue is:
+
+$$Q_{el} = \frac{1}{2} \sigma |\mathbf{E}|^2 \quad \text{[W/m}^3\text{]}$$
+
+### 1.2 Heat equation
+
+The temperature field $T$ is evolved using the classic heat equation with $Q_{el}$ as a volumetric source:
+
+$$\text{VHC}(\mathbf{x})\, \frac{\partial T}{\partial t} = \nabla \cdot [k(\mathbf{x})\, \nabla T] + Q(\mathbf{x},t)$$
+
+where VHC $= \rho c$ [J/(m³·K)] is the volumetric heat capacity and $k$ [W/(m·K)] is the thermal conductivity, both spatially varying according to the tissue geometry.
+
+The simulation is split into two sequential phases:
+
+- **Heating phase** (duration $t_\text{on}$): $Q = Q_{el}$, i.e. the RF source is active.
+- **Cooling phase** (duration $t_\text{off}$): $Q = 0$, i.e. RF is switched off and tissue cools.
+
+The time step $\Delta t$ is chosen automatically to satisfy the explicit-Euler von-Neumann stability criterion:
+
+$$\Delta t \leq \frac{\text{VHC}}{2\, k \left(\frac{1}{\Delta x^2} + \frac{1}{\Delta y^2} + \frac{1}{\Delta z^2}\right)}$$
+
+evaluated over all cells, with a safety factor of 0.45.
 
 ## 2. Usage
 
-The usage of the project is simple: Just run one of the example files or create a new example file and then provide the necessary parameters.
+The workflow consists of two steps that can be run independently.
 
-In case you want the plots saved in the Images subfolder, provide filename parameter to plot_graphs function, such as in example below:
+### Step 1 — RF simulation
+
+Run `run_simulation` to obtain the electric field results and the ohmic heat source `Qel`:
 
 ```julia
-plot_graphs(material_indices, grid_params, Qel, E, V, "Example6_Franco")
+grid, V_dof, Qel, E_mag, E_vec, V = run_simulation(grid_params, rf_params, boundary_conditions)
+```
+
+### Step 2 — Heat simulation
+
+Pass `Qel` to `run_heat_simulation` to evolve the temperature field:
+
+```julia
+T_final = run_heat_simulation(Qel, grid_params, heat_params)
+```
+
+Set `create_timelapse = true` to display a live-updating cross-section plot of the temperature field as the simulation runs:
+
+```julia
+T_final = run_heat_simulation(Qel, grid_params, heat_params; create_timelapse = true)
+```
+
+The plot refreshes `n_update` times during the heating phase and `n_update` times during the cooling phase. The colour scale is updated automatically to the current field range at each refresh.
+
+### Saving plots
+
+To save plots to the `Images` subfolder, pass a filename to `plot_graphs`:
+
+```julia
+plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V, "Example6_Franco")
 ```
 
 ### HDF5 Data Handling
 
-Simulation results can be stored (using save_simulation function) in .h5 files using HDF5.jl. This format is efficient, portable, and well-suited for large numerical datasets. The data structure is similar to what you would see in the MATLAB workspace, making it intuitive to explore.
+Simulation results can be stored with `save_simulation` in `.h5` files using HDF5.jl. This format is efficient, portable, and well-suited for large numerical datasets. The data structure is similar to what you would see in the MATLAB workspace, making it intuitive to explore.
 
-You can inspect these files using tools such as HDFView:
+You can inspect these files using HDFView:
 
 - <https://www.hdfgroup.org/download-hdfview/>
 
@@ -42,8 +95,6 @@ You can inspect these files using tools such as HDFView:
 
 [1] Quasi-Static Electromagnetic Dosimetry: From Basic Principles to Examples of Applications
 
-[2] Quasi-Static Approximation Error of Electric Field
-Analysis for Transcranial Current Stimulation
+[2] Quasi-Static Approximation Error of Electric Field Analysis for Transcranial Current Stimulation
 
-[3] Numerical Study of Hyper‐Thermic Laser Lipolysis With
-1,064 nm Nd:YAG Laser in Human Subjects
+[3] Numerical Study of Hyper‐Thermic Laser Lipolysis With 1,064 nm Nd:YAG Laser in Human Subjects
