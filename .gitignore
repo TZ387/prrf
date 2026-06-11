@@ -1,7 +1,4 @@
 /Images
-/src/BioheatSolver.jl
-/src/TimelapseCreation.jl
-/Images
 /Results
 
 *.h5
