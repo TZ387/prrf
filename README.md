@@ -36,16 +36,23 @@ $$\text{VHC}(\mathbf{x})\, \frac{\partial T}{\partial t} = \nabla \cdot [k(\math
 
 where VHC $= \rho c$ [J/(m³·K)] is the volumetric heat capacity and $k$ [W/(m·K)] is the thermal conductivity, both spatially varying according to the tissue geometry.
 
-The simulation is split into two sequential phases:
+The simulation follows an arbitrary **heating schedule** — an ordered list of `(:on, duration)` and `(:off, duration)` phases, for example:
 
-- **Heating phase** (duration $t_\text{on}$): $Q = Q_{el}$, i.e. the RF source is active.
-- **Cooling phase** (duration $t_\text{off}$): $Q = 0$, i.e. RF is switched off and tissue cools.
+```julia
+schedule = [(:on, 30.0), (:off, 60.0), (:on, 15.0)]
+```
+
+During `:on` phases $Q = Q_{el}$; during `:off` phases $Q = 0$.
 
 The time step $\Delta t$ is chosen automatically to satisfy the explicit-Euler von-Neumann stability criterion:
 
 $$\Delta t \leq \frac{\text{VHC}}{2\, k \left(\frac{1}{\Delta x^2} + \frac{1}{\Delta y^2} + \frac{1}{\Delta z^2}\right)}$$
 
 evaluated over all cells, with a safety factor of 0.45.
+
+### 1.3 CPU parallelisation
+
+The Laplacian and Euler update kernels are parallelised (if this is enabled, see section Enabling Multiple Threads below) by partitioning the grid's z-dimension into chunks, one per worker thread. The worker count is set automatically to $\min(N_\text{Julia threads},\ \lfloor N_\text{logical cores} / 2 \rfloor)$, excluding hyperthreads which share the FPU and provide no benefit for dense arithmetic. The active count is printed at the start of each phase.
 
 ## 2. Usage
 
@@ -73,7 +80,7 @@ Set `create_timelapse = true` to display a live-updating cross-section plot of t
 T_final = run_heat_simulation(Qel, grid_params, heat_params; create_timelapse = true)
 ```
 
-The plot refreshes `n_update` times during the heating phase and `n_update` times during the cooling phase. The colour scale is updated automatically to the current field range at each refresh.
+The plot refreshes `n_update` times per schedule phase. The colour scale is updated automatically to the current field range at each refresh.
 
 ### Saving plots
 
@@ -90,6 +97,28 @@ Simulation results can be stored with `save_simulation` in `.h5` files using HDF
 You can inspect these files using HDFView:
 
 - <https://www.hdfgroup.org/download-hdfview/>
+
+### Enabling multiple threads
+
+By default Julia starts with a single thread, so the parallel kernels described in Section 1.3 have no effect. To enable them, Julia must be launched with multiple threads.
+
+**VS Code** — add to `.vscode/settings.json` in the project folder:
+
+```json
+{
+    "julia.additionalArgs": ["--threads", "auto"]
+}
+```
+
+**Command line / other environments** — pass the flag directly or set the environment variable:
+
+```bash
+julia --threads auto example1.jl
+# or
+export JULIA_NUM_THREADS=auto
+```
+
+You can confirm the thread count inside Julia with `Threads.nthreads()`.
 
 ## 3. Literature
 
