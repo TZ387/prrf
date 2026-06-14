@@ -1,8 +1,18 @@
-The project is still in development.
-
 # prrf
 
+> ⚠️ This project is still in development.
+
 A program for RF heating simulation in biological tissue. Given an arbitrary electrode geometry and boundary conditions, it computes the electric potential, electric field, and ohmic heat dissipation in the tissue, and then uses that dissipation as a source term to evolve the temperature field over time.
+
+## Requirements
+
+- [Julia](https://julialang.org/) ≥ 1.10
+- Dependencies are listed in `Project.toml` and managed by Julia's built-in package manager. To install them, open a Julia REPL in the project directory and run:
+
+```julia
+using Pkg
+Pkg.instantiate()
+```
 
 ## 1. Theoretical basis
 
