@@ -44,16 +44,12 @@ export run_heat_timelapse
 # ── Snapshot carried through the channel ─────────────────────────────────────
 
 struct PlotSnapshot
-    slice :: Matrix{Float64}  # copy of T[:, jmid, :], made on worker thread
-    t_sim :: Float64          # simulation time [s]
+    T     :: Array{Float64,3}  # full temperature field, copied on worker thread
+    t_sim :: Float64            # simulation time [s]
     label :: String
     T_min :: Float64
     T_max :: Float64
 end
-
-# ── Helper ────────────────────────────────────────────────────────────────────
-
-mid(n) = max(1, n ÷ 2)
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
@@ -61,7 +57,7 @@ mid(n) = max(1, n ÷ 2)
     run_heat_timelapse(Qel, heat_params, grid_params)
 
 Run the multi-phase heat simulation on a worker thread while displaying a
-live-updating XZ cross-section plot on the main thread.
+live-updating 3D volumeslices plot (with X/Y/Z sliders) on the main thread.
 
 The window stays fully responsive because the main thread never blocks on
 the solver — it only services the GLMakie event loop and drains a Channel
@@ -72,8 +68,11 @@ function run_heat_timelapse(Qel::Array{Float64,3},
                             grid_params::Config.GridParams)
 
     nx, ny, nz = grid_params.nx, grid_params.ny, grid_params.nz
-    jmid  = mid(ny)
     Qzero = zeros(Float64, nx, ny, nz)
+
+    x = LinRange(-grid_params.lx/2, grid_params.lx/2, nx)
+    y = LinRange(-grid_params.ly/2, grid_params.ly/2, ny)
+    z = LinRange(grid_params.lz, 0, nz)
 
     # ── Channel ───────────────────────────────────────────────────────────────
     # Capacity 4: small buffer so the worker is never held up long waiting for
@@ -82,20 +81,103 @@ function run_heat_timelapse(Qel::Array{Float64,3},
     snapshot_ch = Channel{Union{PlotSnapshot, Nothing}}(4)
 
     # ── Build the Makie scene on the main thread ──────────────────────────────
-    T0         = heat_params.T_initial
-    slice_obs  = Observable(T0[:, jmid, :])
-    title_obs  = Observable("t = 0.00 s")
-    crange_obs = Observable((minimum(T0), maximum(T0) + 1.0))
+    T0   = heat_params.T_initial
+    Tmin = minimum(T0)
+    Tmax = maximum(T0) + 1.0
 
-    fig = Figure(size = (800, 600))
-    ax  = Axis(fig[1, 1];
-               title  = title_obs,
-               xlabel = "x index",
-               ylabel = "z index")
-    hm  = heatmap!(ax, slice_obs;
-                   colormap   = :thermal,
-                   colorrange = crange_obs)
-    Colorbar(fig[1, 2], hm; label = "Temperature [°C]")
+    vol_obs    = Observable(T0)
+    crange_obs = Observable((Tmin, Tmax))
+    title_obs  = Observable("t = 0.00 s")
+
+    colormap = :thermal
+
+    fig = Figure(size = (800, 750))
+
+    Label(fig[0, 1], title_obs, fontsize = 18, tellwidth = false)
+
+    ax = LScene(fig[1, 1], show_axis = false)
+    maximum_length = max(grid_params.lx, grid_params.ly, grid_params.lz)
+    scale!(ax.scene,
+           maximum_length / grid_params.lx,
+           maximum_length / grid_params.ly,
+           maximum_length / grid_params.lz)
+
+    plt = volumeslices!(ax, x, y, z, vol_obs;
+                        colormap   = colormap,
+                        colorrange = crange_obs)
+
+    Colorbar(fig[1, 2];
+             colormap = colormap,
+             limits   = crange_obs,
+             label    = "Temperature [°C]")
+
+    # ── Sliders ───────────────────────────────────────────────────────────────
+    slider_layout = GridLayout(fig[2, 1])
+
+    slider_params = [
+        (label = "x axis", range = 1:nx),
+        (label = "y axis", range = 1:ny),
+        (label = "z axis", range = 1:nz),
+    ]
+
+    sliders       = []
+    left_buttons  = []
+    right_buttons = []
+
+    for (i, (label, range)) in enumerate(slider_params)
+        left_btn = Button(slider_layout[i, 1], label = "◀", width = 30)
+        push!(left_buttons, left_btn)
+
+        slider = Slider(slider_layout[i, 2:4], range = range, startvalue = range[1])
+        push!(sliders, slider)
+
+        right_btn = Button(slider_layout[i, 5], label = "▶", width = 30)
+        push!(right_buttons, right_btn)
+
+        Label(slider_layout[i, 6], label, tellwidth = false, halign = :left)
+
+        value_label = Label(slider_layout[i, 7], string(slider.value[]),
+                            tellwidth = false, halign = :center, width = 50)
+        on(slider.value) do val
+            value_label.text = string(val)
+        end
+
+        on(left_btn.clicks) do _
+            current_val = slider.value[]
+            current_idx = findfirst(v -> v == current_val, range)
+            if current_idx !== nothing && current_idx > 1
+                set_close_to!(slider, range[current_idx - 1])
+            end
+        end
+
+        on(right_btn.clicks) do _
+            current_val = slider.value[]
+            current_idx = findfirst(v -> v == current_val, range)
+            if current_idx !== nothing && current_idx < length(range)
+                set_close_to!(slider, range[current_idx + 1])
+            end
+        end
+    end
+
+    sl_yz, sl_xz, sl_xy = sliders
+
+    on(sl_yz.value) do v; plt[:update_yz][](v) end
+    on(sl_xz.value) do v; plt[:update_xz][](v) end
+    on(sl_xy.value) do v; plt[:update_xy][](v) end
+
+    set_close_to!(sl_yz, nx ÷ 2)
+    set_close_to!(sl_xz, ny ÷ 2)
+    set_close_to!(sl_xy, nz ÷ 2)
+
+    # Visibility toggles (one per slice plane)
+    hmaps   = [plt[Symbol(:heatmap_, s)][] for s ∈ (:yz, :xz, :xy)]
+    toggles = [Toggle(slider_layout[i, 8], active = true) for i ∈ 1:3]
+    for (hmap, toggle) in zip(hmaps, toggles)
+        on(toggle.active) do is_active
+            hmap.visible = is_active
+        end
+    end
+
     display(fig)
 
     # ── Worker thread ─────────────────────────────────────────────────────────
@@ -119,12 +201,12 @@ function run_heat_timelapse(Qel::Array{Float64,3},
             t_off = t_elapsed
 
             cb = (T_curr, t_local) -> begin
-                s    = T_curr[:, jmid, :]   # copy slice on worker — safe
-                Tmin = minimum(T_curr)
-                Tmax = maximum(T_curr)
-                Tmax = Tmax ≈ Tmin ? Tmin + 1.0 : Tmax
+                T_snap = copy(T_curr)       # copy on worker thread — safe
+                Tmin   = minimum(T_curr)
+                Tmax   = maximum(T_curr)
+                Tmax   = Tmax ≈ Tmin ? Tmin + 1.0 : Tmax
                 put!(snapshot_ch,
-                     PlotSnapshot(s, t_off + t_local, label, Tmin, Tmax))
+                     PlotSnapshot(T_snap, t_off + t_local, label, Tmin, Tmax))
             end
 
             T = HeatSolver.solve_heat_phase(
@@ -155,9 +237,16 @@ function run_heat_timelapse(Qel::Array{Float64,3},
                 done = true
                 break
             end
-            slice_obs[]  = snap.slice
+            vol_obs[]    = snap.T          # update the full 3D field
             crange_obs[] = (snap.T_min, snap.T_max)
             title_obs[]  = @sprintf("t = %.2f s  [%s]", snap.t_sim, snap.label)
+            # volumeslices! doesn't re-extract slices automatically when the
+            # volume observable changes — manually re-trigger each plane at
+            # the current slider position so the display updates without the
+            # user having to touch a slider.
+            plt[:update_yz][](sl_yz.value[])
+            plt[:update_xz][](sl_xz.value[])
+            plt[:update_xy][](sl_xy.value[])
         end
         sleep(0.05)
     end
