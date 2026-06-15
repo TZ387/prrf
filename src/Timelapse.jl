@@ -81,12 +81,17 @@ function run_heat_timelapse(Qel::Array{Float64,3},
     snapshot_ch = Channel{Union{PlotSnapshot, Nothing}}(4)
 
     # ── Build the Makie scene on the main thread ──────────────────────────────
-    T0   = heat_params.T_initial
-    Tmin = minimum(T0)
-    Tmax = maximum(T0) + 1.0
+    T0 = heat_params.T_initial
+
+    # Fixed limits when the user supplied both T_plot_min and T_plot_max;
+    # otherwise fall back to auto-ranging from the live data.
+    fixed_crange = heat_params.T_plot_min !== nothing &&
+                   heat_params.T_plot_max !== nothing
+    init_cmin = fixed_crange ? heat_params.T_plot_min : minimum(T0)
+    init_cmax = fixed_crange ? heat_params.T_plot_max : maximum(T0) + 1.0
 
     vol_obs    = Observable(T0)
-    crange_obs = Observable((Tmin, Tmax))
+    crange_obs = Observable((init_cmin, init_cmax))
     title_obs  = Observable("t = 0.00 s")
 
     colormap = :thermal
@@ -237,9 +242,11 @@ function run_heat_timelapse(Qel::Array{Float64,3},
                 done = true
                 break
             end
-            vol_obs[]    = snap.T          # update the full 3D field
-            crange_obs[] = (snap.T_min, snap.T_max)
-            title_obs[]  = @sprintf("t = %.2f s  [%s]", snap.t_sim, snap.label)
+            vol_obs[]   = snap.T           # update the full 3D field
+            if !fixed_crange
+                crange_obs[] = (snap.T_min, snap.T_max)
+            end
+            title_obs[] = @sprintf("t = %.2f s  [%s]", snap.t_sim, snap.label)
             # volumeslices! doesn't re-extract slices automatically when the
             # volume observable changes — manually re-trigger each plane at
             # the current slider position so the display updates without the

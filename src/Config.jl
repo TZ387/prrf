@@ -20,11 +20,24 @@ const HeatSchedule = Vector{Tuple{Symbol, Float64}}
 
 # Parameters for heat problem
 struct HeatParams
-    schedule::HeatSchedule      # Ordered sequence of (:on/:off, duration [s]) phases
-    n_update::Int               # Number of plot updates per phase
-    T_initial::Array{Float64, 3}# Initial temperature [°C]
-    VHC::Array{Float64, 3}      # Volumetric heat capacity [J/(m³·K)]  (VHC = rho * c)
-    k::Array{Float64, 3}        # Thermal conductivity [W/(m·K)]
+    schedule  :: HeatSchedule        # Ordered sequence of (:on/:off, duration [s]) phases
+    n_update  :: Int                 # Number of plot updates per phase
+    T_initial :: Array{Float64, 3}   # Initial temperature [°C]
+    VHC       :: Array{Float64, 3}   # Volumetric heat capacity [J/(m³·K)]  (VHC = rho * c)
+    k         :: Array{Float64, 3}   # Thermal conductivity [W/(m·K)]
+    # Optional fixed colour-scale limits for the live heat plot.
+    # When both are set, the colorbar stays fixed throughout the simulation.
+    # When either is nothing, limits are derived automatically from the data.
+    T_plot_min :: Union{Float64, Nothing}
+    T_plot_max :: Union{Float64, Nothing}
+end
+
+# Convenience constructor — T_plot_min/T_plot_max default to nothing so all
+# existing call sites that pass only the original five arguments still work.
+function HeatParams(schedule, n_update, T_initial, VHC, k;
+                    T_plot_min::Union{Float64,Nothing} = nothing,
+                    T_plot_max::Union{Float64,Nothing} = nothing)
+    HeatParams(schedule, n_update, T_initial, VHC, k, T_plot_min, T_plot_max)
 end
 
 # Parameters for grid setup

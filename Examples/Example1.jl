@@ -73,7 +73,9 @@ function main()
         2,                      # n_update  = Number of plot refreshes per phase
         T_initial,              # T_initial = Initial temperature [°C]
         VHC,                    # Volumetric heat capacity matrix [J/(m³·K)]
-        k,                      # Thermal conductivity matrix [W/(m·K)]
+        k;                      # Thermal conductivity matrix [W/(m·K)]
+        T_plot_min = 37.0,      # lower limit for live heat plot [°C]  — nothing = auto
+        T_plot_max = 37.5,      # upper limit for live heat plot [°C]  — nothing = auto
     )
 
     # Define boundary conditions as functions
