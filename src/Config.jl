@@ -22,7 +22,7 @@ const HeatSchedule = Vector{Tuple{Symbol, Float64}}
 struct HeatParams
     schedule::HeatSchedule      # Ordered sequence of (:on/:off, duration [s]) phases
     n_update::Int               # Number of plot updates per phase
-    T_initial::Float64          # Uniform initial temperature [°C]
+    T_initial::Array{Float64, 3}# Initial temperature [°C]
     VHC::Array{Float64, 3}      # Volumetric heat capacity [J/(m³·K)]  (VHC = rho * c)
     k::Array{Float64, 3}        # Thermal conductivity [W/(m·K)]
 end

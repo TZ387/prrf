@@ -34,7 +34,7 @@ function run_heat_simulation(Qel, grid_params, heat_params;
 
     @info "Running heat simulation (no live plot)..."
     Qzero = zeros(Float64, grid_params.nx, grid_params.ny, grid_params.nz)
-    T = fill(heat_params.T_initial, grid_params.nx, grid_params.ny, grid_params.nz)
+    T = heat_params.T_initial
 
     for (phase_idx, (state, duration)) in enumerate(heat_params.schedule)
         state in (:on, :off) || error(

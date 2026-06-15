@@ -82,10 +82,10 @@ function run_heat_timelapse(Qel::Array{Float64,3},
     snapshot_ch = Channel{Union{PlotSnapshot, Nothing}}(4)
 
     # ── Build the Makie scene on the main thread ──────────────────────────────
-    T0         = fill(heat_params.T_initial, nx, ny, nz)
+    T0         = heat_params.T_initial
     slice_obs  = Observable(T0[:, jmid, :])
     title_obs  = Observable("t = 0.00 s")
-    crange_obs = Observable((heat_params.T_initial, heat_params.T_initial + 1.0))
+    crange_obs = Observable((minimum(T0), maximum(T0) + 1.0))
 
     fig = Figure(size = (800, 600))
     ax  = Axis(fig[1, 1];

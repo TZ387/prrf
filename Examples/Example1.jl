@@ -60,6 +60,9 @@ function main()
         1e6,         # ω = (Circular) Frequency of the RF signal [Hz]
     )
 
+    # Set initial temperature
+    T_initial = fill(37.0, grid_params.nx, grid_params.ny, grid_params.nz)  # Initial temperature [°C]
+
     # Load heat parameters
     heat_params = HeatParams(
         [                       # schedule = ordered list of (:on/:off, duration [s]) phases
@@ -68,7 +71,7 @@ function main()
             (:on,  3.0),        # heat again for 3 s
         ],
         2,                      # n_update  = Number of plot refreshes per phase
-        37.0,                   # T_initial = Uniform initial temperature [°C]
+        T_initial,              # T_initial = Initial temperature [°C]
         VHC,                    # Volumetric heat capacity matrix [J/(m³·K)]
         k,                      # Thermal conductivity matrix [W/(m·K)]
     )
