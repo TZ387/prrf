@@ -1,7 +1,5 @@
 # prrf
 
-> ⚠️ This project is still in development.
-
 A program for RF heating simulation in biological tissue. Given an arbitrary electrode geometry and boundary conditions, it computes the electric potential, electric field, and ohmic heat dissipation in the tissue, and then uses that dissipation as a source term to evolve the temperature field over time.
 
 ## Requirements
