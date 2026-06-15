@@ -121,7 +121,7 @@ end
 # arrow_density controls how many arrows appear along the longest physical axis.
 # Each axis gets its own stride derived from a shared target physical spacing,
 # so arrow density is visually uniform even on highly anisotropic grids.
-function plot_field_directions(E_vec, grid_params; arrow_density = 10, title = "E-field Direction")
+function plot_field_directions(E_vec, grid_params; arrow_density = 6, title = "E-field Direction")
     fig = Figure(size = (700, 700))
 
     if !isempty(title)
@@ -171,7 +171,7 @@ end
 
 # ── Top-level plotting entry point ────────────────────────────────────────────
 
-function plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V, filename=nothing, arrow_density = 10)
+function plot_graphs(material_indices, grid_params, Qel, E_mag, E_vec, V, filename=nothing, arrow_density = 6)
     fig1 = plot_slices(material_indices, grid_params,
                        num_ticks = maximum(material_indices), title = "Media Distribution")
     fig2 = plot_slices(Qel, grid_params, title = "Distribution of Qel [W/m³]")
